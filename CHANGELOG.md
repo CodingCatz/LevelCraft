@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.3.0] - 2026-07-12
+
+### Added
+- 畫布底部置中的五項圖示工具列：選取、方框、標記、節點與新增自訂類型。
+- 選取工具支援在畫布空白處拖曳框選；被完整框住的矩形與落在範圍內的點標記會一併標示選取。
+- 方框／標記／節點工具可向上展開類型清單，並顯示目前啟用類型；自訂類型會按形狀自動納入方框或節點清單。
+
+### Changed
+- 移除左側的舊工具與類型調色盤；左欄現在只保留世界設定。
+- 世界寬、高、吸附與 px/單位改為各自獨立一列，數值輸入空間更寬。
+
 ## [0.2.1] - 2026-07-12
 
 ### Fixed
@@ -39,3 +50,4 @@
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
 [0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1
+[0.3.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.3.0

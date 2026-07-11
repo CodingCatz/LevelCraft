@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -36,6 +36,7 @@ const S = {
   tool: 'select',
   activeType: 'ground',
   selId: null,
+  multiSelIds: [],
   view: { x: -40, y: -40, zoom: 1 }, // zoom 疊加在 ppu 上；view.x/y 為畫布像素偏移
 };
 
@@ -55,7 +56,7 @@ function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 100) un
 function restore(str) {
   const d = JSON.parse(str);
   S.name = d.name; S.world = d.world; S.snap = d.snap; S.spawn = d.spawn; S.els = d.els; S.types = d.types;
-  S.selId = null;
+  clearSelection();
 }
 function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); syncInputs(); renderAll(); }
 function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); syncInputs(); renderAll(); }
@@ -98,6 +99,7 @@ function draw() {
   drawLinks();
   drawSpawn();
   drawSelection();
+  drawMarquee();
 }
 
 function drawGrid(r) {
@@ -199,24 +201,44 @@ function centerOf(e) {
 }
 
 function drawSelection() {
-  const e = selected(); if (!e) return;
+  const selectedIds = selectionIds();
+  if (!selectedIds.length) return;
   ctx.save();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
-  if (e.kind === 'rect') {
-    const a = toScreen(e.x, e.y);
-    ctx.strokeRect(a.x - 1, a.y - 1, e.w * scale() + 2, e.h * scale() + 2);
+  for (const id of selectedIds) {
+    const e = S.els.find(item => item.id === id);
+    if (!e) continue;
+    if (e.kind === 'rect') {
+      const a = toScreen(e.x, e.y);
+      ctx.strokeRect(a.x - 1, a.y - 1, e.w * scale() + 2, e.h * scale() + 2);
+    } else {
+      const a = toScreen(e.x, e.y);
+      ctx.beginPath(); ctx.arc(a.x, a.y, 16, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+  const primary = selected();
+  if (primary?.kind === 'rect') {
     ctx.setLineDash([]);
-    // 縮放把手（四角）：加大可點範圍，讓自由矩形的操作更接近圖形編輯器。
-    for (const [hx, hy] of corners(e)) {
+    // 縮放把手只顯示在主要選取項，避免多選時產生歧義。
+    for (const [hx, hy] of corners(primary)) {
       const p = toScreen(hx, hy);
-      ctx.fillStyle = '#fff'; ctx.strokeStyle = typeColor(e.type); ctx.lineWidth = 1.5;
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = typeColor(primary.type); ctx.lineWidth = 1.5;
       ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
       ctx.strokeRect(p.x - 5, p.y - 5, 10, 10);
     }
-  } else {
-    const a = toScreen(e.x, e.y);
-    ctx.beginPath(); ctx.arc(a.x, a.y, 16, 0, Math.PI * 2); ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawMarquee() {
+  if (!drag || drag.mode !== 'marquee') return;
+  const a = toScreen(drag.start.x, drag.start.y), b = toScreen(drag.end.x, drag.end.y);
+  ctx.save();
+  ctx.fillStyle = 'rgba(79, 209, 197, 0.12)';
+  ctx.strokeStyle = '#4fd1c5';
+  ctx.setLineDash([5, 4]);
+  ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+  ctx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
   ctx.restore();
 }
 
@@ -233,6 +255,23 @@ function hexA(hex, a) {
 //  命中測試
 // =====================================================================
 function selected() { return S.els.find(e => e.id === S.selId) || null; }
+function selectionIds() {
+  return S.multiSelIds.includes(S.selId) ? S.multiSelIds : (S.selId ? [S.selId] : []);
+}
+function selectIds(ids) {
+  S.multiSelIds = ids;
+  S.selId = ids[0] || null;
+}
+function clearSelection() { selectIds([]); }
+
+function marqueeSelection(a, b) {
+  const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
+  const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
+  return S.els.filter(e => {
+    if (e.kind === 'point') return e.x >= left && e.x <= right && e.y >= top && e.y <= bottom;
+    return e.x >= left && e.x + e.w <= right && e.y >= top && e.y + e.h <= bottom;
+  }).map(e => e.id);
+}
 
 function hitTest(ux, uy) {
   // 點類型優先（在上層），由後往前
@@ -292,7 +331,7 @@ cw.addEventListener('mousedown', ev => {
     pushUndo();
     const x = snapU(u.x), y = snapU(u.y);
     const e = { id: newId(S.activeType), kind: 'rect', type: S.activeType, x: round4(x), y: round4(y), w: S.snap || 1, h: S.snap || 1, props: {}, links: [] };
-    S.els.push(e); S.selId = e.id;
+    S.els.push(e); selectIds([e.id]);
     drag = { mode: 'draw', e, ox: x, oy: y };
     renderAll(); return;
   }
@@ -302,16 +341,19 @@ cw.addEventListener('mousedown', ev => {
     if (shape !== 'point') { flashHint('目前類型是矩形，改用「矩形」工具或選別的類型'); return; }
     pushUndo();
     const e = { id: newId(S.activeType), kind: 'point', type: S.activeType, x: round4(snapU(u.x)), y: round4(snapU(u.y)), props: {}, links: [] };
-    S.els.push(e); S.selId = e.id;
+    S.els.push(e); selectIds([e.id]);
     renderAll(); autosave(); return;
   }
 
   // select 工具
   const hit = hitTest(u.x, u.y);
-  S.selId = hit ? hit.id : null;
   if (hit) {
+    selectIds([hit.id]);
     pushUndo();
     drag = { mode: 'move', e: hit, grabU: u, ox: hit.x, oy: hit.y };
+  } else {
+    clearSelection();
+    drag = { mode: 'marquee', start: u, end: u };
   }
   renderAll();
 });
@@ -322,7 +364,7 @@ cw.addEventListener('contextmenu', ev => {
   const u = toUnit(ev.clientX - rect.left, ev.clientY - rect.top);
   const hit = hitTest(u.x, u.y);
   if (!hit) return;
-  S.selId = hit.id;
+  selectIds([hit.id]);
   deleteSel();
 });
 
@@ -374,6 +416,11 @@ window.addEventListener('mousemove', ev => {
     e.w = round4(Math.max(S.snap || 0.1, Math.abs(x2 - x1)));
     e.h = round4(Math.max(S.snap || 0.1, Math.abs(y2 - y1)));
     renderProps(); draw(); return;
+  }
+  if (drag.mode === 'marquee') {
+    drag.end = u;
+    selectIds(marqueeSelection(drag.start, drag.end));
+    renderProps(); renderList(); updateStatus(); draw(); return;
   }
 });
 
@@ -433,7 +480,7 @@ function deleteSel() {
   pushUndo();
   S.els = S.els.filter(x => x !== e);
   for (const x of S.els) if (x.links) x.links = x.links.filter(id => id !== e.id);
-  S.selId = null; renderAll(); autosave();
+  clearSelection(); renderAll(); autosave();
 }
 function duplicateSel() {
   const e = selected(); if (!e) return;
@@ -442,31 +489,52 @@ function duplicateSel() {
   c.id = newId(e.type);
   c.x = round4(e.x + (S.snap || 1)); c.y = round4(e.y + (S.snap || 1));
   c.links = [];
-  S.els.push(c); S.selId = c.id; renderAll(); autosave();
+  S.els.push(c); selectIds([c.id]); renderAll(); autosave();
 }
 
 // =====================================================================
 //  UI 渲染
 // =====================================================================
-function renderAll() { renderPalette(); renderProps(); renderList(); updateStatus(); draw(); }
+function renderAll() { renderToolbar(); renderProps(); renderList(); updateStatus(); draw(); }
 
-function renderPalette() {
-  const el = $('#palette'); el.innerHTML = '';
-  for (const t of S.types) {
-    const d = document.createElement('div');
-    d.className = 'ptype' + (t.name === S.activeType ? ' on' : '');
-    d.innerHTML = `<span class="sw" style="background:${t.color}"></span>
-      <span class="nm">${escapeHtml(t.name)}</span>
-      <span class="shp">${t.shape === 'rect' ? '▭' : '◈'}</span>
-      <button class="edit" title="編輯" style="padding:1px 6px">✎</button>`;
-    d.addEventListener('click', ev => {
-      if (ev.target.classList.contains('edit')) { openTypeDlg(t); return; }
-      S.activeType = t.name;
-      setTool(t.shape === 'rect' ? 'rect' : 'marker');
-      renderPalette();
-    });
-    el.appendChild(d);
+function typeCategory(t) {
+  if (t.shape === 'rect') return 'rect';
+  if (['switch', 'key', 'door'].includes(t.name)) return 'marker';
+  return 'node';
+}
+
+const CATEGORY_TYPE_ORDER = {
+  rect: ['ground', 'oneway', 'wall', 'spike', 'ladder'],
+  marker: ['switch', 'key', 'door'],
+  node: ['spawn', 'checkpoint', 'goal'],
+};
+
+function orderedTypesFor(category) {
+  const names = CATEGORY_TYPE_ORDER[category];
+  return S.types.filter(t => typeCategory(t) === category).sort((a, b) => {
+    const ai = names.indexOf(a.name), bi = names.indexOf(b.name);
+    return (ai < 0 ? names.length : ai) - (bi < 0 ? names.length : bi) || a.name.localeCompare(b.name);
+  });
+}
+
+function renderToolbar() {
+  for (const category of ['rect', 'marker', 'node']) {
+    const menu = $(`#menu-${category}`);
+    menu.innerHTML = '';
+    const types = orderedTypesFor(category);
+    for (const t of types) {
+      const item = document.createElement('button');
+      item.className = 'toolbar-item' + (t.name === S.activeType ? ' on' : '');
+      item.innerHTML = `<span class="sw" style="background:${t.color}"></span><span class="nm">${escapeHtml(t.name)}</span><span>${t.shape === 'rect' ? '▭' : '◇'}</span>`;
+      item.onclick = () => { S.activeType = t.name; setTool(t.shape === 'rect' ? 'rect' : 'marker'); closeToolbarMenus(); renderAll(); };
+      menu.appendChild(item);
+    }
   }
+  $('#toolSelect').classList.toggle('on', S.tool === 'select');
+  document.querySelectorAll('[data-category]').forEach(button => {
+    const category = button.dataset.category;
+    button.classList.toggle('on', typeCategory(typeDef(S.activeType) || { shape: 'rect' }) === category && S.tool !== 'select');
+  });
 }
 
 function renderProps() {
@@ -575,7 +643,7 @@ function renderList() {
     d.className = 'li' + (e.id === S.selId ? ' on' : '');
     d.innerHTML = `<span class="sw" style="background:${typeColor(e.type)}"></span>
       <span class="id">${escapeHtml(e.id)}</span><span class="ty">${e.kind === 'rect' ? '▭' : '◈'} ${escapeHtml(e.type)}</span>`;
-    d.onclick = () => { S.selId = e.id; setTool('select'); focusOn(e); renderAll(); };
+    d.onclick = () => { selectIds([e.id]); setTool('select'); focusOn(e); renderAll(); };
     el.appendChild(d);
   }
 }
@@ -604,9 +672,24 @@ function flashHint(msg) {
 function setTool(t) {
   S.tool = t;
   cw.style.cursor = t === 'select' ? 'default' : 'crosshair';
-  for (const b of document.querySelectorAll('.tool')) b.classList.toggle('on', b.dataset.tool === t);
+  renderToolbar();
 }
-document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+function closeToolbarMenus() {
+  document.querySelectorAll('.toolbar-menu').forEach(menu => menu.classList.remove('open'));
+}
+
+$('#toolSelect').onclick = () => { closeToolbarMenus(); setTool('select'); };
+document.querySelectorAll('[data-category]').forEach(button => {
+  button.onclick = ev => {
+    ev.stopPropagation();
+    const menu = $(`#menu-${button.dataset.category}`);
+    const wasOpen = menu.classList.contains('open');
+    closeToolbarMenus();
+    menu.classList.toggle('open', !wasOpen);
+  };
+});
+document.addEventListener('mousedown', ev => { if (!ev.target.closest('.bottom-toolbar')) closeToolbarMenus(); });
 
 // =====================================================================
 //  類型對話框
@@ -679,7 +762,7 @@ function deserialize(d) {
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
     props: e.props || {}, links: e.links || [],
   }));
-  S.selId = null;
+  clearSelection();
   // 重算 uid 避免撞號
   uid = 1;
   for (const e of S.els) { const m = /(\d+)$/.exec(e.id); if (m) uid = Math.max(uid, +m[1] + 1); }
@@ -735,7 +818,7 @@ $('#btnNew').onclick = () => {
   if (!confirm('清空目前關卡，開新的？（會存進復原）')) return;
   pushUndo();
   S.name = 'level-01'; S.world = { w: 80, h: 20 }; S.snap = 0.5; S.spawn = { x: 3, y: 15 };
-  S.els = []; S.selId = null; uid = 1;
+  S.els = []; clearSelection(); uid = 1;
   syncInputs(); renderAll(); autosave();
 };
 
