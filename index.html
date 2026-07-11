@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unit Level Editor</title>
+<style>
+  :root {
+    --bg: #14161c; --panel: #1c1f28; --panel2: #232734; --line: #2f3446;
+    --fg: #e7eaf3; --muted: #8b93a7; --accent: #4fd1c5; --accent2: #f6ad55;
+    --danger: #fc8181; --grid: #2a2f3d; --grid-major: #3a4256;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 13px/1.4 ui-sans-serif, system-ui, "Segoe UI", "Noto Sans TC", sans-serif;
+    background: var(--bg); color: var(--fg);
+    display: grid; grid-template-columns: 220px 1fr 280px; grid-template-rows: 40px 1fr 24px;
+    grid-template-areas: "top top top" "left canvas right" "status status status";
+    height: 100vh; overflow: hidden;
+  }
+  header { grid-area: top; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+    background: var(--panel); border-bottom: 1px solid var(--line); }
+  header .title { font-weight: 700; letter-spacing: .3px; color: var(--accent); }
+  header .sp { flex: 1; }
+  header input.name { background: var(--panel2); border: 1px solid var(--line); color: var(--fg);
+    border-radius: 6px; padding: 4px 8px; width: 160px; }
+  button, select, input[type=number], input[type=text] {
+    background: var(--panel2); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 4px 8px; font: inherit; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.pri { background: var(--accent); color: #10231f; border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  input[type=number], input[type=text] { cursor: text; }
+  aside { background: var(--panel); overflow-y: auto; }
+  #left { grid-area: left; border-right: 1px solid var(--line); }
+  #right { grid-area: right; border-left: 1px solid var(--line); }
+  .sec { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .sec h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tool { display: flex; align-items: center; gap: 6px; justify-content: center; padding: 8px 4px; }
+  .tool.on { background: var(--accent); color: #10231f; border-color: var(--accent); font-weight: 600; }
+  .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .row label { color: var(--muted); width: 62px; flex: none; }
+  .row input { width: 100%; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .palette { display: flex; flex-direction: column; gap: 4px; }
+  .ptype { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 6px;
+    border: 1px solid transparent; cursor: pointer; }
+  .ptype:hover { background: var(--panel2); }
+  .ptype.on { border-color: var(--accent); background: var(--panel2); }
+  .sw { width: 14px; height: 14px; border-radius: 3px; flex: none; border: 1px solid #0004; }
+  .ptype .nm { flex: 1; }
+  .ptype .shp { color: var(--muted); font-size: 11px; }
+  .canvas-wrap { grid-area: canvas; position: relative; overflow: hidden; background: #0f1117; }
+  canvas { display: block; position: absolute; top: 0; left: 0; }
+  #status { grid-area: status; display: flex; align-items: center; gap: 16px; padding: 0 12px;
+    background: var(--panel); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  #status b { color: var(--fg); font-weight: 600; }
+  .props .kv { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; margin-bottom: 4px; }
+  .props .kv input { width: 100%; }
+  .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; }
+  .li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; }
+  .li:hover { background: var(--panel2); }
+  .li.on { background: var(--accent); color: #10231f; }
+  .li .id { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .li .ty { color: var(--muted); font-size: 11px; }
+  .li.on .ty { color: #10231f; }
+  textarea { width: 100%; height: 120px; background: var(--panel2); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px; font: 11px/1.4 ui-monospace, monospace; padding: 6px; }
+  dialog { background: var(--panel); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 0; width: min(560px, 92vw); }
+  dialog::backdrop { background: #0008; }
+  dialog .dh { padding: 12px 16px; border-bottom: 1px solid var(--line); font-weight: 600; }
+  dialog .db { padding: 16px; }
+  dialog .df { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; gap: 8px; justify-content: flex-end; }
+  .small { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <span class="title">▦ Unit Level Editor</span>
+  <input class="name" id="lvName" value="level-01" title="關卡名稱" />
+  <span class="sp"></span>
+  <button id="btnNew">新建</button>
+  <button id="btnImport">匯入 JSON</button>
+  <button id="btnExport" class="pri">匯出 JSON</button>
+</header>
+
+<aside id="left">
+  <div class="sec">
+    <h3>工具</h3>
+    <div class="tools" id="tools">
+      <button class="tool" data-tool="select">▷ 選取</button>
+      <button class="tool" data-tool="rect">▭ 矩形</button>
+      <button class="tool" data-tool="marker">◈ 標記</button>
+      <button class="tool" data-tool="spawn">⚑ 出生點</button>
+    </div>
+    <div class="hint">拖曳中鍵/空白鍵平移，滾輪縮放。</div>
+  </div>
+
+  <div class="sec">
+    <h3>類型調色盤</h3>
+    <div class="palette" id="palette"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnAddType" style="flex:1">＋ 新增類型</button>
+    </div>
+    <div class="hint">類型只是標籤 + 顏色 + 形狀；語意由你的遊戲解讀。矩形類型畫方塊，點類型放標記。</div>
+  </div>
+
+  <div class="sec">
+    <h3>世界設定（單位）</h3>
+    <div class="grid2">
+      <div class="row"><label>寬 W</label><input type="number" id="worldW" value="80" step="1" min="1"></div>
+      <div class="row"><label>高 H</label><input type="number" id="worldH" value="20" step="1" min="1"></div>
+    </div>
+    <div class="grid2">
+      <div class="row"><label>吸附</label><input type="number" id="snap" value="0.5" step="0.05" min="0"></div>
+      <div class="row"><label>px/單位</label><input type="number" id="ppu" value="20" step="1" min="1" title="僅螢幕顯示比例，不寫入輸出"></div>
+    </div>
+    <div class="hint">px/單位只影響顯示縮放，不進 JSON。單位=遊戲的共通語言。</div>
+  </div>
+</aside>
+
+<div class="canvas-wrap" id="cw">
+  <canvas id="cv"></canvas>
+</div>
+
+<aside id="right">
+  <div class="sec">
+    <h3>屬性</h3>
+    <div id="props"><div class="small">未選取任何元素。</div></div>
+  </div>
+  <div class="sec">
+    <h3>元素清單 <span class="small" id="count"></span></h3>
+    <div class="list" id="list"></div>
+  </div>
+</aside>
+
+<div id="status">
+  <span>游標 <b id="stCur">0, 0</b></span>
+  <span>選取 <b id="stSel">—</b></span>
+  <span>縮放 <b id="stZoom">100%</b></span>
+  <span class="sp" style="flex:1"></span>
+  <span class="small">Del 刪除 · Ctrl+D 複製 · Ctrl+Z/Y 復原 · 方向鍵微調</span>
+</div>
+
+<!-- 類型編輯對話框 -->
+<dialog id="typeDlg">
+  <form method="dialog">
+    <div class="dh">編輯類型</div>
+    <div class="db">
+      <div class="row"><label>名稱</label><input type="text" id="tdName" placeholder="例：ground / spike / key"></div>
+      <div class="row"><label>顏色</label><input type="color" id="tdColor" value="#4fd1c5" style="width:60px;padding:2px"></div>
+      <div class="row"><label>形狀</label>
+        <select id="tdShape"><option value="rect">矩形 rect</option><option value="point">點 point</option></select>
+      </div>
+      <div class="hint">形狀決定用「矩形」或「標記」工具放置。改名不會動到已放置元素的既有 type 字串。</div>
+    </div>
+    <div class="df">
+      <button type="button" class="danger" id="tdDelete">刪除類型</button>
+      <span style="flex:1"></span>
+      <button type="button" id="tdCancel">取消</button>
+      <button type="button" class="pri" id="tdSave">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 匯入/匯出對話框 -->
+<dialog id="ioDlg">
+  <div class="dh" id="ioTitle">JSON</div>
+  <div class="db">
+    <textarea id="ioText" spellcheck="false"></textarea>
+    <div class="df" style="border:0;padding:8px 0 0">
+      <button id="ioCopy">複製</button>
+      <button id="ioDownload">下載 .json</button>
+      <span style="flex:1"></span>
+      <button id="ioClose">關閉</button>
+      <button id="ioLoad" class="pri" style="display:none">載入</button>
+    </div>
+  </div>
+</dialog>
+
+<script src="editor.js"></script>
+</body>
+</html>
