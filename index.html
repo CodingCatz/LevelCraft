@@ -32,7 +32,11 @@
   button.pri { background: var(--accent); color: #10231f; border-color: var(--accent); font-weight: 600; }
   button.danger { color: var(--danger); }
   input[type=number], input[type=text] { cursor: text; }
-  aside { background: var(--panel); overflow-y: auto; }
+  aside { background: var(--panel); overflow-y: auto; scrollbar-color: var(--line) var(--panel); scrollbar-width: thin; }
+  aside::-webkit-scrollbar { width: 10px; }
+  aside::-webkit-scrollbar-track { background: var(--panel); }
+  aside::-webkit-scrollbar-thumb { background: var(--line); border: 2px solid var(--panel); border-radius: 999px; }
+  aside::-webkit-scrollbar-thumb:hover { background: var(--muted); }
   #left { grid-area: left; border-right: 1px solid var(--line); }
   #right { grid-area: right; border-left: 1px solid var(--line); }
   .sec { padding: 10px 12px; border-bottom: 1px solid var(--line); }
@@ -42,7 +46,11 @@
   .tool.on { background: var(--accent); color: #10231f; border-color: var(--accent); font-weight: 600; }
   .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
   .row label { color: var(--muted); width: 62px; flex: none; }
-  .row input { width: 100%; }
+  .row input { width: 100%; min-width: 0; }
+  .grid2 .row label { width: 24px; }
+  input[type=number] { min-width: 0; padding-right: 24px; }
+  #left .grid2 .row { gap: 4px; }
+  #left .grid2 .row label { width: 38px; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .palette { display: flex; flex-direction: column; gap: 4px; }
   .ptype { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 6px;
@@ -60,7 +68,7 @@
   .props .kv { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; margin-bottom: 4px; }
   .props .kv input { width: 100%; }
   .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
-  .list { display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow-y: auto; }
+  .list { display: flex; flex-direction: column; gap: 2px; }
   .li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; }
   .li:hover { background: var(--panel2); }
   .li.on { background: var(--accent); color: #10231f; }
@@ -80,7 +88,7 @@
 </head>
 <body>
 <header>
-  <span class="title">▦ LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.1.0</span></span>
+  <span class="title">▦ LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.2.0</span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -97,7 +105,7 @@
       <button class="tool" data-tool="marker">◈ 標記</button>
       <button class="tool" data-tool="spawn">⚑ 出生點</button>
     </div>
-    <div class="hint">拖曳中鍵/空白鍵平移，滾輪縮放。</div>
+    <div class="hint">拖曳放置／移動元素，拖白色角點縮放；中鍵或空白鍵平移，滾輪縮放。</div>
   </div>
 
   <div class="sec">
@@ -143,7 +151,7 @@
   <span>選取 <b id="stSel">—</b></span>
   <span>縮放 <b id="stZoom">100%</b></span>
   <span class="sp" style="flex:1"></span>
-  <span class="small">Del 刪除 · Ctrl+D 複製 · Ctrl+Z/Y 復原 · 方向鍵微調</span>
+  <span class="small">右鍵刪除 · Del 刪除 · Ctrl+D 複製 · Ctrl+Z/Y 復原 · 方向鍵微調</span>
 </div>
 
 <!-- 類型編輯對話框 -->

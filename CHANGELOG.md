@@ -3,6 +3,16 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.2.0] - 2026-07-12
+
+### Added
+- 畫布元素可右鍵直接刪除，沿用既有復原與自動存檔流程。
+- 選取矩形的縮放把手加大並有明確外框，畫布游標會回饋移動與縮放可操作位置。
+
+### Changed
+- 加寬世界設定與元素座標的數值欄位，為原生 number spinner 預留空間。
+- 統一左右側欄的 scrollbar 視覺；移除元素清單的內層捲動，避免巢狀捲動。
+
 ## [0.1.0] - 2026-07-11
 
 首個公開版本。
@@ -18,3 +28,4 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
+[0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0

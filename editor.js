@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -206,10 +206,12 @@ function drawSelection() {
     const a = toScreen(e.x, e.y);
     ctx.strokeRect(a.x - 1, a.y - 1, e.w * scale() + 2, e.h * scale() + 2);
     ctx.setLineDash([]);
-    // 縮放把手（四角）
+    // 縮放把手（四角）：加大可點範圍，讓自由矩形的操作更接近圖形編輯器。
     for (const [hx, hy] of corners(e)) {
       const p = toScreen(hx, hy);
-      ctx.fillStyle = '#fff'; ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = typeColor(e.type); ctx.lineWidth = 1.5;
+      ctx.fillRect(p.x - 5, p.y - 5, 10, 10);
+      ctx.strokeRect(p.x - 5, p.y - 5, 10, 10);
     }
   } else {
     const a = toScreen(e.x, e.y);
@@ -250,7 +252,7 @@ function hitTest(ux, uy) {
 
 function hitHandle(e, ux, uy) {
   if (!e || e.kind !== 'rect') return -1;
-  const tol = 8 / scale();
+  const tol = 11 / scale();
   const cs = corners(e);
   for (let i = 0; i < cs.length; i++) if (Math.hypot(ux - cs[i][0], uy - cs[i][1]) <= tol) return i;
   return -1;
@@ -312,19 +314,38 @@ cw.addEventListener('mousedown', ev => {
   renderAll();
 });
 
+cw.addEventListener('contextmenu', ev => {
+  ev.preventDefault();
+  const rect = cw.getBoundingClientRect();
+  const u = toUnit(ev.clientX - rect.left, ev.clientY - rect.top);
+  const hit = hitTest(u.x, u.y);
+  if (!hit) return;
+  S.selId = hit.id;
+  deleteSel();
+});
+
 window.addEventListener('mousemove', ev => {
   const rect = cw.getBoundingClientRect();
   const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
   const u = toUnit(sx, sy);
   $('#stCur').textContent = `${round4(snapU(u.x))}, ${round4(snapU(u.y))}`;
 
+  if (!drag) {
+    const sel = selected();
+    const overHandle = hitHandle(sel, u.x, u.y) >= 0;
+    const overElement = hitTest(u.x, u.y) !== null;
+    cw.style.cursor = overHandle ? 'nwse-resize' : (overElement ? 'move' : 'crosshair');
+  }
+
   if (!drag) return;
   if (drag.mode === 'pan') {
+    cw.style.cursor = 'grabbing';
     S.view.x = drag.vx + (ev.clientX - drag.sx);
     S.view.y = drag.vy + (ev.clientY - drag.sy);
     draw(); return;
   }
   if (drag.mode === 'draw') {
+    cw.style.cursor = 'crosshair';
     const x2 = snapU(u.x), y2 = snapU(u.y);
     const e = drag.e;
     e.x = round4(Math.min(drag.ox, x2)); e.y = round4(Math.min(drag.oy, y2));
@@ -333,12 +354,14 @@ window.addEventListener('mousemove', ev => {
     renderProps(); draw(); return;
   }
   if (drag.mode === 'move') {
+    cw.style.cursor = 'move';
     const e = drag.e;
     const dx = u.x - drag.grabU.x, dy = u.y - drag.grabU.y;
     e.x = round4(snapU(drag.ox + dx)); e.y = round4(snapU(drag.oy + dy));
     renderProps(); draw(); return;
   }
   if (drag.mode === 'resize') {
+    cw.style.cursor = 'nwse-resize';
     const e = drag.e;
     const nx = snapU(u.x), ny = snapU(u.y);
     const x2 = (drag.handle === 1 || drag.handle === 3) ? nx : e.x + e.w;
@@ -355,6 +378,7 @@ window.addEventListener('mousemove', ev => {
 window.addEventListener('mouseup', () => {
   if (drag && (drag.mode === 'draw' || drag.mode === 'move' || drag.mode === 'resize')) autosave();
   drag = null;
+  cw.style.cursor = S.tool === 'select' ? 'default' : 'crosshair';
 });
 
 // 縮放（以游標為中心）
@@ -547,6 +571,7 @@ function flashHint(msg) {
 // =====================================================================
 function setTool(t) {
   S.tool = t;
+  cw.style.cursor = t === 'select' ? 'default' : 'crosshair';
   for (const b of document.querySelectorAll('.tool')) b.classList.toggle('on', b.dataset.tool === t);
 }
 document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
