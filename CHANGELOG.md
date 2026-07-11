@@ -3,6 +3,15 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.2.1] - 2026-07-12
+
+### Fixed
+- 縮放把手的命中判斷改為優先於目前工具；剛使用矩形、標記或出生點工具後仍能正確拖曳已選矩形的角點縮放。
+- 以一致的自訂 ▲／▼ 微調控制取代瀏覽器原生 number spinner，世界設定與元素座標值不再被控制圖示遮擋。
+
+### Changed
+- 微調控制固定貼齊數值欄位右側，保留完整數字可讀與可輸入區域。
+
 ## [0.2.0] - 2026-07-12
 
 ### Added
@@ -29,3 +38,4 @@
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
+[0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1
