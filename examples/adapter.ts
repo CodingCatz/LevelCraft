@@ -1,12 +1,12 @@
 /**
- * 範例轉接器：把 unit-level/v1 轉成某個平台遊戲的關卡結構。
+ * 範例轉接器：把 levelcraft/v1 轉成某個平台遊戲的關卡結構。
  *
  * 重點：編輯器輸出是「中性」的（只有 type 字串 + 單位座標）。
  * 「哪個 type 算實心地形、哪個致死、哪個是互動物件」是遊戲的決定，
  * 全集中在下面這張 CATEGORY 對照表。換一款遊戲，只改這張表。
  */
 
-// ---- 編輯器輸出型別（unit-level/v1）----
+// ---- 編輯器輸出型別（levelcraft/v1）----
 interface UnitElement {
   id: string;
   kind: 'rect' | 'point';

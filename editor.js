@@ -20,8 +20,9 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const FORMAT = 'unit-level/v1';
-const LS_KEY = 'unit-level-editor:autosave';
+const VERSION = '0.1.0';
+const FORMAT = 'levelcraft/v1';
+const LS_KEY = 'levelcraft:autosave';
 
 // ---------- 狀態 ----------
 const S = {
