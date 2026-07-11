@@ -272,6 +272,15 @@ cw.addEventListener('mousedown', ev => {
   const rect = cw.getBoundingClientRect();
   const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
   const u = toUnit(sx, sy);
+  const sel = selected();
+  const h = hitHandle(sel, u.x, u.y);
+
+  // 縮放把手永遠優先於目前工具，避免剛畫完矩形時誤建立另一個元素。
+  if (h >= 0) {
+    pushUndo();
+    drag = { mode: 'resize', e: sel, handle: h };
+    return;
+  }
 
   if (S.tool === 'spawn') {
     pushUndo(); S.spawn = { x: round4(snapU(u.x)), y: round4(snapU(u.y)) }; renderAll(); autosave(); return;
@@ -298,13 +307,6 @@ cw.addEventListener('mousedown', ev => {
   }
 
   // select 工具
-  const sel = selected();
-  const h = hitHandle(sel, u.x, u.y);
-  if (h >= 0) {
-    pushUndo();
-    drag = { mode: 'resize', e: sel, handle: h };
-    return;
-  }
   const hit = hitTest(u.x, u.y);
   S.selId = hit ? hit.id : null;
   if (hit) {
@@ -533,6 +535,36 @@ function renderProps() {
   const bindNum = (id, key) => { const el = $(id); if (!el) return; el.onchange = ev2 => { pushUndo(); e[key] = round4(parseFloat(ev2.target.value) || 0); renderAll(); autosave(); }; };
   bindNum('#pX', 'x'); bindNum('#pY', 'y'); bindNum('#pW', 'w'); bindNum('#pH', 'h');
   $('#pDel').onclick = deleteSel; $('#pDup').onclick = duplicateSel;
+  installNumberSteppers(box);
+}
+
+// =====================================================================
+//  數值微調控制
+// =====================================================================
+function installNumberSteppers(root = document) {
+  root.querySelectorAll('input[type="number"]').forEach(input => {
+    if (input.closest('.num-control')) return;
+
+    const control = document.createElement('span');
+    control.className = 'num-control';
+    input.parentNode.insertBefore(control, input);
+    control.appendChild(input);
+
+    const stepper = document.createElement('span');
+    stepper.className = 'num-stepper';
+    stepper.innerHTML = '<button type="button" aria-label="增加數值" title="增加">▲</button><button type="button" aria-label="減少數值" title="減少">▼</button>';
+    const changeValue = direction => {
+      try {
+        direction > 0 ? input.stepUp() : input.stepDown();
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch {
+        // 不可微調的數字欄位維持原本可直接輸入的行為。
+      }
+    };
+    stepper.children[0].addEventListener('click', () => changeValue(1));
+    stepper.children[1].addEventListener('click', () => changeValue(-1));
+    control.appendChild(stepper);
+  });
 }
 
 function renderList() {
@@ -697,6 +729,7 @@ $('#worldW').onchange = e => { pushUndo(); S.world.w = Math.max(1, parseFloat(e.
 $('#worldH').onchange = e => { pushUndo(); S.world.h = Math.max(1, parseFloat(e.target.value) || 1); draw(); autosave(); };
 $('#snap').onchange = e => { S.snap = Math.max(0, parseFloat(e.target.value) || 0); autosave(); };
 $('#ppu').onchange = e => { S.ppu = Math.max(1, parseFloat(e.target.value) || 20); draw(); };
+installNumberSteppers();
 
 $('#btnNew').onclick = () => {
   if (!confirm('清空目前關卡，開新的？（會存進復原）')) return;
