@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.11.0';
+const VERSION = '0.11.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -429,7 +429,7 @@ cw.addEventListener('mousedown', ev => {
   const u = toUnit(sx, sy);
   if (S.tool === 'path') {
     const target = pathTarget();
-    if (!target) { S.tool = 'select'; pathEditingId = null; renderAll(); return; }
+    if (!target) { S.tool = typeShape(S.activeType) === 'rect' ? 'rect' : 'marker'; pathEditingId = null; renderAll(); return; }
     const index = hitPathNode(target, u.x, u.y);
     pushUndo();
     if (index >= 0) drag = { mode: 'movePath', e: target, index };
@@ -1088,6 +1088,8 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp
 //  啟動
 // =====================================================================
 function boot() {
+  const verTag = $('#verTag');
+  if (verTag) verTag.textContent = 'v' + VERSION;
   loadAutosave();
   setTool(typeShape(S.activeType) === 'rect' ? 'rect' : 'marker');
   syncInputs();

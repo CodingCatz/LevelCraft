@@ -3,6 +3,12 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.11.1] - 2026-07-13
+
+### Fixed
+- 修正路徑編輯在取消對象選取時，編輯工具被誤設為已廢棄的 `'select'` 工具的回歸 bug，改為重設為矩形或標記工具。
+- 修正 `README.md` 中重複的匯出操作說明。
+
 ## [0.11.0] - 2026-07-12
 
 ### Added
@@ -135,13 +141,19 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
-[0.8.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.0
-[0.8.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.1
-[0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
-[0.7.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.7.0
-[0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
-[0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
 [0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1
 [0.3.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.3.0
 [0.4.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.0
+[0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
+[0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
+[0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
+[0.7.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.7.0
+[0.8.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.0
+[0.8.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.1
+[0.9.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.9.0
+[0.9.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.9.1
+[0.10.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.10.0
+[0.10.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.10.1
+[0.11.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.0
+[0.11.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.1
