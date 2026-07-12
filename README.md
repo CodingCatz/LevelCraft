@@ -51,7 +51,7 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 
 ### 類型工具列
 
-類型 = **名稱 + 顏色 + 形狀（矩形／點）**，就這樣，沒有內建語意。方框清單含 `ground / oneway / wall / spike / ladder`；標記清單含 `switch / key / door`；節點清單含 `spawn / checkpoint / goal`。按底部的「新增自訂類型」按鈕可新增類型；矩形自訂類型會落在方框清單，點類型落在節點清單。**語意（哪個算實心、哪個致死）由你的遊戲決定**。
+類型 = **名稱 + 顏色 + 形狀（矩形／點）+ 可選描述**，沒有內建語意。類型描述用來說明此類型的用途，元素也可填自己的描述覆寫它；兩者都會隨 JSON 匯出，讓人類與 AI 能理解關卡語意。方框清單含 `ground / oneway / wall / spike / ladder`；標記清單含 `switch / key / door`；節點清單含 `spawn / checkpoint / goal`。按底部的「新增自訂類型」按鈕可新增類型；矩形自訂類型會落在方框清單，點類型落在節點清單。**語意（哪個算實心、哪個致死）由你的遊戲決定**。
 
 > 顯示設定裡的「px/單位」只影響螢幕縮放，**不會寫進 JSON**。編輯器內外一律用單位溝通。
 
@@ -70,15 +70,15 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
   "world":  { "wUnit": 80, "hUnit": 20 },   // 世界大小（單位）
   "snap": 0.5,
   "spawnUnit": { "x": 3, "y": 15 },          // 出生點（單位，點；沒有出生點時為 null）
-  "types": [                                  // 類型定義（顏色/形狀，供還原調色盤）
-    { "name": "ground", "color": "#5568d3", "shape": "rect" },
+  "types": [                                  // 類型定義（顏色/形狀/可選描述，供還原調色盤）
+    { "name": "ground", "color": "#5568d3", "shape": "rect", "description": "可行走的地面" },
     { "name": "goal",   "color": "#4fd1c5", "shape": "point" }
   ],
   "elements": [
     // 矩形：帶 wUnit/hUnit，(xUnit,yUnit)=左上角
     { "id": "ground-1", "kind": "rect",  "type": "ground", "xUnit": 0, "yUnit": 18, "wUnit": 22, "hUnit": 2 },
     // 點：無 wUnit/hUnit
-    { "id": "goal-1",   "kind": "point", "type": "goal",   "xUnit": 77, "yUnit": 3 },
+    { "id": "goal-1",   "kind": "point", "type": "goal",   "xUnit": 77, "yUnit": 3, "description": "本關終點" },
     // 連動 + 自訂屬性
     { "id": "sw1", "kind": "point", "type": "switch", "xUnit": 20, "yUnit": 12,
       "props": { "once": "true" }, "links": ["door1"] }
@@ -89,6 +89,8 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 **座標約定**：單位制；**Y 向下**（y 越大越靠下）；矩形以左上角為基準；點就是一個座標。
 
 出生點在編輯器中是可選取的一般點元素，但匯出時會保留為頂層 `spawnUnit`，不重複寫進 `elements`，所以既有 v1 轉接器不必修改。`spawn` 與 `goal` 各限一個；刪除後即可從節點工具重新新增。
+
+`description` 為可選字串；留空時不輸出，舊版 JSON 也可直接匯入。元素描述留空時表示沿用其類型描述。
 
 ## 遊戲端怎麼吃
 

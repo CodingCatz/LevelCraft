@@ -3,6 +3,14 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.6.0] - 2026-07-12
+
+### Added
+- 類型與單一元素皆可填寫描述；有內容時會匯出至 `levelcraft/v1` JSON，供人類與 AI 理解關卡語意。
+
+### Changed
+- 世界設定與類型形狀的補充說明改為滑過標題／標籤時顯示，減少常駐介面雜訊。
+
 ## [0.5.0] - 2026-07-12
 
 ### Added
@@ -76,6 +84,7 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
+[0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
 [0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
 [0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0

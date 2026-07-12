@@ -7,20 +7,20 @@
 
 // ---------- 預設類型（可自由增刪；只是標籤＋顏色＋形狀，語意由遊戲解讀）----------
 const DEFAULT_TYPES = [
-  { name: 'ground',  color: '#5568d3', shape: 'rect'  },
-  { name: 'oneway',  color: '#7c8cff', shape: 'rect'  },
-  { name: 'wall',    color: '#3f4a8a', shape: 'rect'  },
-  { name: 'spike',   color: '#fc8181', shape: 'rect'  },
-  { name: 'ladder',  color: '#68d391', shape: 'rect'  },
-  { name: 'spawn',   color: '#f6e05e', shape: 'point' },
-  { name: 'goal',    color: '#4fd1c5', shape: 'point' },
-  { name: 'key',     color: '#f6ad55', shape: 'point' },
-  { name: 'door',    color: '#b794f4', shape: 'point' },
-  { name: 'switch',  color: '#f687b3', shape: 'point' },
-  { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
+  { name: 'ground',  color: '#5568d3', shape: 'rect',  description: '' },
+  { name: 'oneway',  color: '#7c8cff', shape: 'rect',  description: '' },
+  { name: 'wall',    color: '#3f4a8a', shape: 'rect',  description: '' },
+  { name: 'spike',   color: '#fc8181', shape: 'rect',  description: '' },
+  { name: 'ladder',  color: '#68d391', shape: 'rect',  description: '' },
+  { name: 'spawn',   color: '#f6e05e', shape: 'point', description: '' },
+  { name: 'goal',    color: '#4fd1c5', shape: 'point', description: '' },
+  { name: 'key',     color: '#f6ad55', shape: 'point', description: '' },
+  { name: 'door',    color: '#b794f4', shape: 'point', description: '' },
+  { name: 'switch',  color: '#f687b3', shape: 'point', description: '' },
+  { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.5.0';
+const VERSION = '0.6.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -30,7 +30,7 @@ const S = {
   world: { w: 80, h: 20 },
   snap: 0.5,
   ppu: 20,                 // 螢幕顯示比例（px per unit），不寫入 JSON
-  els: [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, props: {}, links: [] }],
+  els: [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, description: '', props: {}, links: [] }],
   types: DEFAULT_TYPES.map(t => ({ ...t })),
   tool: 'rect',
   activeType: 'ground',
@@ -329,10 +329,10 @@ function placeActiveType(u) {
   pushUndo();
   if (shape === 'rect') {
     const x = snapU(u.x), y = snapU(u.y);
-    const e = { id: newId(S.activeType), kind: 'rect', type: S.activeType, x: round4(x), y: round4(y), w: S.snap || 1, h: S.snap || 1, props: {}, links: [] };
+    const e = { id: newId(S.activeType), kind: 'rect', type: S.activeType, x: round4(x), y: round4(y), w: S.snap || 1, h: S.snap || 1, description: '', props: {}, links: [] };
     S.els.push(e); selectIds([e.id]);
   } else {
-    const e = { id: newId(S.activeType), kind: 'point', type: S.activeType, x: round4(snapU(u.x)), y: round4(snapU(u.y)), props: {}, links: [] };
+    const e = { id: newId(S.activeType), kind: 'point', type: S.activeType, x: round4(snapU(u.x)), y: round4(snapU(u.y)), description: '', props: {}, links: [] };
     S.els.push(e); selectIds([e.id]);
   }
   renderAll();
@@ -627,6 +627,7 @@ function renderProps() {
     <div class="row"><label>ID</label><input type="text" id="pId" value="${escapeHtml(e.id)}"></div>
     <div class="row"><label>類型</label><select id="pType">${opts}<option value="__free">（自訂…）</option></select></div>
     <div class="row" id="pFreeRow" style="display:none"><label>自訂型</label><input type="text" id="pFree" value="${escapeHtml(e.type)}"></div>
+    <div class="row"><label>描述</label><textarea id="pDescription" class="description-input" placeholder="留空時沿用類型描述">${escapeHtml(e.description || '')}</textarea></div>
     <div class="grid2">
       <div class="row"><label>x</label><input type="number" id="pX" step="${S.snap || 0.1}" value="${e.x}"></div>
       <div class="row"><label>y</label><input type="number" id="pY" step="${S.snap || 0.1}" value="${e.y}"></div>
@@ -681,6 +682,7 @@ function renderProps() {
     pushUndo(); e.type = ev2.target.value; renderAll(); autosave();
   };
   $('#pFree').onchange = ev2 => { const nv = ev2.target.value.trim(); if (nv) { if (!canUseType(nv, e.id)) { flashHint(singletonLockedMessage(nv)); renderProps(); return; } pushUndo(); e.type = nv; renderAll(); autosave(); } };
+  $('#pDescription').onchange = ev2 => { pushUndo(); e.description = ev2.target.value.trim(); autosave(); };
   const bindNum = (id, key) => { const el = $(id); if (!el) return; el.onchange = ev2 => { pushUndo(); e[key] = round4(parseFloat(ev2.target.value) || 0); renderAll(); autosave(); }; };
   bindNum('#pX', 'x'); bindNum('#pY', 'y'); bindNum('#pW', 'w'); bindNum('#pH', 'h');
   $('#pDel').onclick = deleteSel; $('#pDup').onclick = duplicateSel;
@@ -780,6 +782,7 @@ function openTypeDlg(t) {
   $('#tdName').value = t ? t.name : '';
   $('#tdColor').value = t ? t.color : '#4fd1c5';
   $('#tdShape').value = t ? t.shape : 'rect';
+  $('#tdDescription').value = t ? (t.description || '') : '';
   $('#tdDelete').style.display = t ? '' : 'none';
   $('#typeDlg').showModal();
 }
@@ -795,14 +798,14 @@ $('#tdDelete').onclick = () => {
 $('#tdSave').onclick = () => {
   const name = $('#tdName').value.trim();
   if (!name) { alert('名稱不可空白'); return; }
-  const color = $('#tdColor').value, shape = $('#tdShape').value;
+  const color = $('#tdColor').value, shape = $('#tdShape').value, description = $('#tdDescription').value.trim();
   pushUndo();
   if (editingType) {
     if (name !== editingType.name && S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    editingType.name = name; editingType.color = color; editingType.shape = shape;
+    editingType.name = name; editingType.color = color; editingType.shape = shape; editingType.description = description;
   } else {
     if (S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    S.types.push({ name, color, shape });
+    S.types.push({ name, color, shape, description });
     S.activeType = name;
   }
   $('#typeDlg').close(); renderAll(); autosave();
@@ -820,11 +823,16 @@ function serialize() {
     snap: S.snap,
     // 保留 v1 頂層欄位；未放出生點時以 null 表示，避免捏造不存在的座標。
     spawnUnit: spawn ? { x: spawn.x, y: spawn.y } : null,
-    types: S.types.map(t => ({ ...t })),
+    types: S.types.map(t => {
+      const o = { name: t.name, color: t.color, shape: t.shape };
+      if (t.description) o.description = t.description;
+      return o;
+    }),
     // spawn 由頂層 spawnUnit 表示，維持既有消費端的 elements 外觀。
     elements: S.els.filter(e => e.type !== 'spawn').map(e => {
       const o = { id: e.id, kind: e.kind, type: e.type, xUnit: e.x, yUnit: e.y };
       if (e.kind === 'rect') { o.wUnit = e.w; o.hUnit = e.h; }
+      if (e.description) o.description = e.description;
       if (e.props && Object.keys(e.props).length) o.props = { ...e.props };
       if (e.links && e.links.length) o.links = [...e.links];
       return o;
@@ -837,17 +845,17 @@ function deserialize(d) {
   S.name = d.name || 'level';
   S.world = { w: d.world?.wUnit ?? 80, h: d.world?.hUnit ?? 20 };
   S.snap = d.snap ?? 0.5;
-  if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect' }));
+  if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect', description: t.description || '' }));
   S.els = (d.elements || []).map(e => ({
     id: e.id, kind: e.kind || (e.wUnit != null ? 'rect' : 'point'), type: e.type || 'unknown',
     x: e.xUnit ?? 0, y: e.yUnit ?? 0,
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
-    props: e.props || {}, links: e.links || [],
+    description: e.description || '', props: e.props || {}, links: e.links || [],
   }));
   normalizeSingletonNodes();
   // 舊存檔只有 spawnUnit；還原為可選取、拖曳、刪除的一般點元素。
   if (d.spawnUnit && !singletonElement('spawn')) {
-    S.els.unshift({ id: newId('spawn'), kind: 'point', type: 'spawn', x: d.spawnUnit.x ?? 3, y: d.spawnUnit.y ?? 15, props: {}, links: [] });
+    S.els.unshift({ id: newId('spawn'), kind: 'point', type: 'spawn', x: d.spawnUnit.x ?? 3, y: d.spawnUnit.y ?? 15, description: '', props: {}, links: [] });
   }
   clearSelection();
   // 重算 uid 避免撞號
@@ -905,7 +913,7 @@ $('#btnNew').onclick = () => {
   if (!confirm('清空目前關卡，開新的？（會存進復原）')) return;
   pushUndo();
   S.name = 'level-01'; S.world = { w: 80, h: 20 }; S.snap = 0.5;
-  S.els = [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, props: {}, links: [] }]; clearSelection(); uid = 1;
+  S.els = [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, description: '', props: {}, links: [] }]; clearSelection(); uid = 1;
   syncInputs(); renderAll(); autosave();
 };
 
