@@ -88,6 +88,9 @@
   .props .kv { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; margin-bottom: 4px; }
   .props .kv input { width: 100%; }
   .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  .toolbox-actions { display:flex; gap:6px; margin-bottom:12px; }
+  .toolbox-actions button { display:flex; align-items:center; gap:6px; flex:1; justify-content:center; }
+  .toolbox-actions .ui-icon { width:16px; height:16px; }
   textarea.description-input { height: 58px; font: inherit; resize: vertical; cursor: text; }
   .list { display: flex; flex-direction: column; gap: 2px; }
   .li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; }
@@ -109,7 +112,7 @@
 </head>
 <body>
 <header>
-  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM9 5v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.6.0</span></span>
+  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.7.0</span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -124,6 +127,7 @@
     <div class="row"><label>高 H</label><input type="number" id="worldH" value="20" step="1" min="1"></div>
     <div class="row"><label>吸附</label><input type="number" id="snap" value="0.5" step="0.05" min="0"></div>
     <div class="row"><label>px/單位</label><input type="number" id="ppu" value="20" step="1" min="1" title="僅螢幕顯示比例，不寫入輸出"></div>
+    <button id="btnToolbox" style="width:100%">工具箱</button>
   </div>
 </aside>
 
@@ -134,7 +138,6 @@
     <div class="toolbar-group"><button class="toolbar-btn" data-category="rect" title="方框元件"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 15h6"/></svg></button><div class="toolbar-menu" id="menu-rect"></div></div>
     <div class="toolbar-group"><button class="toolbar-btn" data-category="marker" title="機關與開關"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 7 7-7 7-7-7 7-7Z"/><path d="M9 12h6"/></svg></button><div class="toolbar-menu" id="menu-marker"></div></div>
     <div class="toolbar-group"><button class="toolbar-btn" data-category="node" title="出生、中繼與目的"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><path d="M7.8 8.2 10.7 15M16.2 8.2 13.3 15"/></svg></button><div class="toolbar-menu" id="menu-node"></div></div>
-    <button class="toolbar-btn" id="btnAddType" title="新增自訂類型"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
 </div>
 
@@ -176,6 +179,18 @@
       <button type="button" class="pri" id="tdSave">儲存</button>
     </div>
   </form>
+</dialog>
+
+<dialog id="toolboxDlg">
+  <div class="dh">工具箱</div>
+  <div class="db">
+    <div class="toolbox-actions">
+      <button type="button" id="tbEditPath"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18c6 0 3-12 10-12"/></svg>編輯路徑</button>
+      <button type="button" id="tbAddType"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>新增類型</button>
+    </div>
+    <div id="tbPathInfo" class="small"></div>
+    <div class="df" style="border:0;padding:12px 0 0"><span style="flex:1"></span><button type="button" id="tbClose">關閉</button></div>
+  </div>
 </dialog>
 
 <!-- 多選刪除確認對話框 -->

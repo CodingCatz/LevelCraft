@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.6.0';
+const VERSION = '0.7.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -126,6 +126,7 @@ function draw() {
   ctx.clearRect(0, 0, r.width, r.height);
   drawGrid(r);
   drawWorldBounds();
+  drawPaths();
   for (const e of S.els) if (e.kind === 'rect') drawRect(e);
   for (const e of S.els) if (e.kind === 'point') drawPoint(e);
   drawLinks();
@@ -247,6 +248,19 @@ function drawSelection() {
   ctx.restore();
 }
 
+let pathDashOffset = 0;
+function drawPaths() {
+  for (const e of S.els) {
+    if (!e.path?.length) continue;
+    const col = typeColor(e.type), points = [centerOf(e), ...e.path];
+    ctx.save(); ctx.strokeStyle = hexA(col, e.id === S.selId ? 0.95 : 0.42); ctx.lineWidth = 1.5;
+    ctx.setLineDash([7, 5]); ctx.lineDashOffset = e.id === S.selId ? -pathDashOffset : 0;
+    ctx.beginPath(); points.forEach((p, i) => { const s = toScreen(p.x, p.y); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); }); ctx.stroke();
+    for (const p of e.path) { const s = toScreen(p.x, p.y); ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fillStyle = hexA(col, .45); ctx.fill(); ctx.strokeStyle = col; ctx.setLineDash([]); ctx.stroke(); ctx.setLineDash([7, 5]); }
+    ctx.restore();
+  }
+}
+
 function drawMarquee() {
   if (!drag || drag.mode !== 'marquee') return;
   const a = toScreen(drag.start.x, drag.start.y), b = toScreen(drag.end.x, drag.end.y);
@@ -319,6 +333,9 @@ function hitHandle(e, ux, uy) {
 //  滑鼠互動
 // =====================================================================
 let drag = null; // { mode, ... }
+let pathEditingId = null;
+function pathTarget() { return S.els.find(e => e.id === pathEditingId); }
+function hitPathNode(e, ux, uy) { if (!e?.path) return -1; const tol = 10 / scale(); return e.path.findIndex(p => Math.hypot(p.x - ux, p.y - uy) <= tol); }
 let toolbarTransientStatus = '';
 let toolbarTransientTimer = null;
 const MARQUEE_THRESHOLD_PX = 4;
@@ -370,6 +387,15 @@ cw.addEventListener('mousedown', ev => {
   const rect = cw.getBoundingClientRect();
   const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
   const u = toUnit(sx, sy);
+  if (S.tool === 'path') {
+    const target = pathTarget();
+    if (!target) { S.tool = 'select'; pathEditingId = null; renderAll(); return; }
+    const index = hitPathNode(target, u.x, u.y);
+    pushUndo();
+    if (index >= 0) drag = { mode: 'movePath', e: target, index };
+    else { target.path = target.path || []; target.path.push({ x: round4(snapU(u.x)), y: round4(snapU(u.y)) }); drag = { mode: 'movePath', e: target, index: target.path.length - 1 }; }
+    draw(); return;
+  }
   const sel = selected();
   const h = hitHandle(sel, u.x, u.y);
 
@@ -406,6 +432,7 @@ cw.addEventListener('contextmenu', ev => {
   ev.preventDefault();
   const rect = cw.getBoundingClientRect();
   const u = toUnit(ev.clientX - rect.left, ev.clientY - rect.top);
+  if (S.tool === 'path') { const target = pathTarget(); const index = hitPathNode(target, u.x, u.y); if (index >= 0) { pushUndo(); target.path.splice(index, 1); if (!target.path.length) delete target.path; autosave(); renderToolbox(); draw(); } return; }
   const hit = hitTest(u.x, u.y);
   if (!hit) return;
   const ids = selectionIds();
@@ -462,6 +489,7 @@ window.addEventListener('mousemove', ev => {
     e.h = round4(Math.max(S.snap || 0.1, Math.abs(y2 - y1)));
     renderProps(); draw(); return;
   }
+  if (drag.mode === 'movePath') { const p = drag.e.path[drag.index]; p.x = round4(snapU(u.x)); p.y = round4(snapU(u.y)); draw(); return; }
   if (drag.mode === 'moveGroup') {
     cw.style.cursor = 'move';
     const dx = u.x - drag.grabU.x, dy = u.y - drag.grabU.y;
@@ -482,7 +510,7 @@ window.addEventListener('mousemove', ev => {
 
 window.addEventListener('mouseup', () => {
   if (drag?.mode === 'pending') placeActiveType(drag.start);
-  if (drag && (drag.mode === 'move' || drag.mode === 'moveGroup' || drag.mode === 'resize')) autosave();
+  if (drag && (drag.mode === 'move' || drag.mode === 'moveGroup' || drag.mode === 'resize' || drag.mode === 'movePath')) autosave();
   drag = null;
   cw.style.cursor = 'crosshair';
   updateToolbarStatus();
@@ -786,7 +814,11 @@ function openTypeDlg(t) {
   $('#tdDelete').style.display = t ? '' : 'none';
   $('#typeDlg').showModal();
 }
-$('#btnAddType').onclick = () => openTypeDlg(null);
+function renderToolbox() { const e = selected(); $('#tbPathInfo').textContent = !e ? '請先選取元素，再開始建立或編輯路徑。' : e.path?.length ? `目前選取 ${e.id}，有 ${e.path.length} 個節點。路徑模式：點擊新增、拖曳調整、右鍵刪除。` : `目前選取 ${e.id}，尚無路徑；按「編輯路徑」後點畫布新增節點。`; }
+$('#btnToolbox').onclick = () => { renderToolbox(); $('#toolboxDlg').showModal(); };
+$('#tbClose').onclick = () => $('#toolboxDlg').close();
+$('#tbAddType').onclick = () => { $('#toolboxDlg').close(); openTypeDlg(null); };
+$('#tbEditPath').onclick = () => { const e = selected(); if (!e) { renderToolbox(); return; } pathEditingId = e.id; S.tool = 'path'; $('#toolboxDlg').close(); flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); };
 $('#tdCancel').onclick = () => $('#typeDlg').close();
 $('#tdDelete').onclick = () => {
   if (!editingType) return;
@@ -835,6 +867,7 @@ function serialize() {
       if (e.description) o.description = e.description;
       if (e.props && Object.keys(e.props).length) o.props = { ...e.props };
       if (e.links && e.links.length) o.links = [...e.links];
+      if (e.path?.length) o.path = e.path.map(p => ({ x: p.x, y: p.y }));
       return o;
     }),
   };
@@ -850,7 +883,7 @@ function deserialize(d) {
     id: e.id, kind: e.kind || (e.wUnit != null ? 'rect' : 'point'), type: e.type || 'unknown',
     x: e.xUnit ?? 0, y: e.yUnit ?? 0,
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
-    description: e.description || '', props: e.props || {}, links: e.links || [],
+    description: e.description || '', props: e.props || {}, links: e.links || [], path: Array.isArray(e.path) ? e.path.map(p => ({ x: p.x ?? 0, y: p.y ?? 0 })) : [],
   }));
   normalizeSingletonNodes();
   // 舊存檔只有 spawnUnit；還原為可選取、拖曳、刪除的一般點元素。
@@ -953,6 +986,8 @@ function boot() {
   S.view.x = (r.width - S.world.w * scale()) / 2;
   S.view.y = 30;
   resizeCanvas();
+  const animatePaths = time => { pathDashOffset = time / 45; if (pathTarget()?.path?.length) draw(); requestAnimationFrame(animatePaths); };
+  requestAnimationFrame(animatePaths);
 }
 window.addEventListener('resize', resizeCanvas);
 boot();

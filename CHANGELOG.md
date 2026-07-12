@@ -3,6 +3,12 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.7.0] - 2026-07-12
+
+### Added
+- 左側工具箱彈出蓋板，可管理自訂類型與任一元素的路徑節點。
+- 路徑節點支援新增、拖曳、右鍵刪除、autosave、undo/redo 與 JSON 匯出入；選取路徑以流動虛線呈現。
+
 ## [0.6.0] - 2026-07-12
 
 ### Added
@@ -85,6 +91,7 @@
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
 [0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
+[0.7.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.7.0
 [0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
 [0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
