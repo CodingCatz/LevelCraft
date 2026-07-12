@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.4.0] - 2026-07-12
+
+### Changed
+- 移除獨立選取模式：左鍵命中既有元素時一律選取並可拖曳；空白處單擊放置目前類型，拖曳超過門檻則框選。
+- 工具列首位改為動態狀態指示，依目前放置類型、框選、平移與縮放即時切換圖示。
+- 矩形改為單擊建立預設大小，後續以四角把手調整，避免與空白拖曳框選衝突。
+
+### Fixed
+- 框選放開後立即重繪，不再殘留虛線框。
+- 框選框改為細的近白色虛線。
+
 ## [0.3.0] - 2026-07-12
 
 ### Added
@@ -51,3 +62,4 @@
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
 [0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1
 [0.3.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.3.0
+[0.4.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.0

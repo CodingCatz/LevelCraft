@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -33,7 +33,7 @@ const S = {
   spawn: { x: 3, y: 15 },
   els: [],                 // { id, kind:'rect'|'point', type, x, y, w?, h?, props:{}, links:[] }
   types: DEFAULT_TYPES.map(t => ({ ...t })),
-  tool: 'select',
+  tool: 'rect',
   activeType: 'ground',
   selId: null,
   multiSelIds: [],
@@ -234,9 +234,10 @@ function drawMarquee() {
   if (!drag || drag.mode !== 'marquee') return;
   const a = toScreen(drag.start.x, drag.start.y), b = toScreen(drag.end.x, drag.end.y);
   ctx.save();
-  ctx.fillStyle = 'rgba(79, 209, 197, 0.12)';
-  ctx.strokeStyle = '#4fd1c5';
-  ctx.setLineDash([5, 4]);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
   ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
   ctx.strokeRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
   ctx.restore();
@@ -301,10 +302,49 @@ function hitHandle(e, ux, uy) {
 //  滑鼠互動
 // =====================================================================
 let drag = null; // { mode, ... }
+let toolbarTransientStatus = '';
+let toolbarTransientTimer = null;
+const MARQUEE_THRESHOLD_PX = 4;
+
+function placeActiveType(u) {
+  const shape = typeShape(S.activeType);
+  pushUndo();
+  if (shape === 'rect') {
+    const x = snapU(u.x), y = snapU(u.y);
+    const e = { id: newId(S.activeType), kind: 'rect', type: S.activeType, x: round4(x), y: round4(y), w: S.snap || 1, h: S.snap || 1, props: {}, links: [] };
+    S.els.push(e); selectIds([e.id]);
+  } else {
+    const e = { id: newId(S.activeType), kind: 'point', type: S.activeType, x: round4(snapU(u.x)), y: round4(snapU(u.y)), props: {}, links: [] };
+    S.els.push(e); selectIds([e.id]);
+  }
+  renderAll();
+  autosave();
+}
+
+function setToolbarTransientStatus(status, duration = 0) {
+  toolbarTransientStatus = status;
+  clearTimeout(toolbarTransientTimer);
+  if (duration) toolbarTransientTimer = setTimeout(() => { toolbarTransientStatus = ''; updateToolbarStatus(); }, duration);
+  updateToolbarStatus();
+}
+
+function updateToolbarStatus() {
+  const indicator = $('#toolStatus');
+  if (!indicator) return;
+  const status = drag?.mode === 'marquee' ? 'marquee' : drag?.mode === 'pan' ? 'pan' : toolbarTransientStatus;
+  if (status === 'marquee') { indicator.textContent = '⬚'; indicator.style.color = '#fff'; indicator.title = '框選中'; return; }
+  if (status === 'pan') { indicator.textContent = '✋'; indicator.style.color = '#e7eaf3'; indicator.title = '平移中'; return; }
+  if (status === 'zoom') { indicator.textContent = '⌕'; indicator.style.color = '#e7eaf3'; indicator.title = '縮放中'; return; }
+  const type = typeDef(S.activeType) || { name: '未知類型', color: '#888', shape: 'rect' };
+  indicator.textContent = typeCategory(type) === 'rect' ? '▭' : typeCategory(type) === 'marker' ? '◇' : '⚑';
+  indicator.style.color = type.color;
+  indicator.title = `目前放置：${type.name}`;
+}
 
 cw.addEventListener('mousedown', ev => {
   if (ev.button === 1 || (ev.button === 0 && spaceDown)) { // 平移
     drag = { mode: 'pan', sx: ev.clientX, sy: ev.clientY, vx: S.view.x, vy: S.view.y };
+    updateToolbarStatus();
     return;
   }
   if (ev.button !== 0) return;
@@ -321,31 +361,6 @@ cw.addEventListener('mousedown', ev => {
     return;
   }
 
-  if (S.tool === 'spawn') {
-    pushUndo(); S.spawn = { x: round4(snapU(u.x)), y: round4(snapU(u.y)) }; renderAll(); autosave(); return;
-  }
-
-  if (S.tool === 'rect') {
-    const shape = typeShape(S.activeType);
-    if (shape !== 'rect') { flashHint('目前類型是點，改用「標記」工具或選別的類型'); return; }
-    pushUndo();
-    const x = snapU(u.x), y = snapU(u.y);
-    const e = { id: newId(S.activeType), kind: 'rect', type: S.activeType, x: round4(x), y: round4(y), w: S.snap || 1, h: S.snap || 1, props: {}, links: [] };
-    S.els.push(e); selectIds([e.id]);
-    drag = { mode: 'draw', e, ox: x, oy: y };
-    renderAll(); return;
-  }
-
-  if (S.tool === 'marker') {
-    const shape = typeShape(S.activeType);
-    if (shape !== 'point') { flashHint('目前類型是矩形，改用「矩形」工具或選別的類型'); return; }
-    pushUndo();
-    const e = { id: newId(S.activeType), kind: 'point', type: S.activeType, x: round4(snapU(u.x)), y: round4(snapU(u.y)), props: {}, links: [] };
-    S.els.push(e); selectIds([e.id]);
-    renderAll(); autosave(); return;
-  }
-
-  // select 工具
   const hit = hitTest(u.x, u.y);
   if (hit) {
     selectIds([hit.id]);
@@ -353,7 +368,7 @@ cw.addEventListener('mousedown', ev => {
     drag = { mode: 'move', e: hit, grabU: u, ox: hit.x, oy: hit.y };
   } else {
     clearSelection();
-    drag = { mode: 'marquee', start: u, end: u };
+    drag = { mode: 'pending', start: u, end: u, sx: ev.clientX, sy: ev.clientY };
   }
   renderAll();
 });
@@ -388,14 +403,10 @@ window.addEventListener('mousemove', ev => {
     S.view.y = drag.vy + (ev.clientY - drag.sy);
     draw(); return;
   }
-  if (drag.mode === 'draw') {
-    cw.style.cursor = 'crosshair';
-    const x2 = snapU(u.x), y2 = snapU(u.y);
-    const e = drag.e;
-    e.x = round4(Math.min(drag.ox, x2)); e.y = round4(Math.min(drag.oy, y2));
-    e.w = round4(Math.max(S.snap || 0.1, Math.abs(x2 - drag.ox)));
-    e.h = round4(Math.max(S.snap || 0.1, Math.abs(y2 - drag.oy)));
-    renderProps(); draw(); return;
+  if (drag.mode === 'pending') {
+    if (Math.hypot(ev.clientX - drag.sx, ev.clientY - drag.sy) <= MARQUEE_THRESHOLD_PX) return;
+    drag.mode = 'marquee';
+    updateToolbarStatus();
   }
   if (drag.mode === 'move') {
     cw.style.cursor = 'move';
@@ -425,9 +436,12 @@ window.addEventListener('mousemove', ev => {
 });
 
 window.addEventListener('mouseup', () => {
-  if (drag && (drag.mode === 'draw' || drag.mode === 'move' || drag.mode === 'resize')) autosave();
+  if (drag?.mode === 'pending') placeActiveType(drag.start);
+  if (drag && (drag.mode === 'move' || drag.mode === 'resize')) autosave();
   drag = null;
-  cw.style.cursor = S.tool === 'select' ? 'default' : 'crosshair';
+  cw.style.cursor = 'crosshair';
+  updateToolbarStatus();
+  draw();
 });
 
 // 縮放（以游標為中心）
@@ -442,6 +456,7 @@ cw.addEventListener('wheel', ev => {
   S.view.x += (after.x - before.x) * scale();
   S.view.y += (after.y - before.y) * scale();
   $('#stZoom').textContent = Math.round(S.view.zoom * 100) + '%';
+  setToolbarTransientStatus('zoom', 450);
   draw();
 }, { passive: false });
 
@@ -461,7 +476,6 @@ window.addEventListener('keydown', ev => {
   const e = selected();
   if (!e) {
     // 工具快捷鍵
-    if (ev.key === 'v') setTool('select');
     if (ev.key === 'r') setTool('rect');
     if (ev.key === 'm') setTool('marker');
     return;
@@ -530,11 +544,11 @@ function renderToolbar() {
       menu.appendChild(item);
     }
   }
-  $('#toolSelect').classList.toggle('on', S.tool === 'select');
   document.querySelectorAll('[data-category]').forEach(button => {
     const category = button.dataset.category;
-    button.classList.toggle('on', typeCategory(typeDef(S.activeType) || { shape: 'rect' }) === category && S.tool !== 'select');
+    button.classList.toggle('on', typeCategory(typeDef(S.activeType) || { shape: 'rect' }) === category);
   });
+  updateToolbarStatus();
 }
 
 function renderProps() {
@@ -643,7 +657,7 @@ function renderList() {
     d.className = 'li' + (e.id === S.selId ? ' on' : '');
     d.innerHTML = `<span class="sw" style="background:${typeColor(e.type)}"></span>
       <span class="id">${escapeHtml(e.id)}</span><span class="ty">${e.kind === 'rect' ? '▭' : '◈'} ${escapeHtml(e.type)}</span>`;
-    d.onclick = () => { selectIds([e.id]); setTool('select'); focusOn(e); renderAll(); };
+    d.onclick = () => { selectIds([e.id]); focusOn(e); renderAll(); };
     el.appendChild(d);
   }
 }
@@ -671,7 +685,7 @@ function flashHint(msg) {
 // =====================================================================
 function setTool(t) {
   S.tool = t;
-  cw.style.cursor = t === 'select' ? 'default' : 'crosshair';
+  cw.style.cursor = 'crosshair';
   renderToolbar();
 }
 
@@ -679,7 +693,6 @@ function closeToolbarMenus() {
   document.querySelectorAll('.toolbar-menu').forEach(menu => menu.classList.remove('open'));
 }
 
-$('#toolSelect').onclick = () => { closeToolbarMenus(); setTool('select'); };
 document.querySelectorAll('[data-category]').forEach(button => {
   button.onclick = ev => {
     ev.stopPropagation();
@@ -850,7 +863,7 @@ function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp
 // =====================================================================
 function boot() {
   loadAutosave();
-  setTool('select');
+  setTool(typeShape(S.activeType) === 'rect' ? 'rect' : 'marker');
   syncInputs();
   renderAll();
   // 置中世界
