@@ -3,6 +3,16 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.5.0] - 2026-07-12
+
+### Added
+- 出生點與目的地各限制一個；工具列會鎖住已存在的節點，刪除後自動解鎖。
+- 舊版只有 `spawnUnit` 的存檔匯入時，會還原成可選取、拖曳與刪除的出生點元素。
+
+### Changed
+- 工具列、狀態指示、類型清單與介面控制全面改為統一風格的 inline SVG 圖示，不再以 Unicode 符號充當圖示。
+- 出生點改由一般元素模型管理；匯出仍保留 v1 頂層 `spawnUnit`，不影響既有轉接器。
+
 ## [0.4.1] - 2026-07-12
 
 ### Fixed
@@ -66,6 +76,7 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
+[0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
 [0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
 [0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1

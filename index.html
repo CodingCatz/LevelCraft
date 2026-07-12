@@ -64,7 +64,9 @@
     display: flex; align-items: end; gap: 6px; padding: 7px; background: #1c1f28eF; border: 1px solid var(--line);
     border-radius: 10px; box-shadow: 0 8px 24px #0008; }
   .toolbar-group { position: relative; }
-  .toolbar-btn { width: 42px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 20px; }
+  .toolbar-btn { width: 42px; height: 38px; padding: 0; display: grid; place-items: center; }
+  .ui-icon { width: 21px; height: 21px; display: block; }
+  .title .ui-icon { width: 17px; height: 17px; display: inline-block; vertical-align: -3px; margin-right: 4px; }
   .toolbar-btn.on { background: var(--accent); color: #10231f; border-color: var(--accent); font-weight: 700; }
   .toolbar-status { cursor: default; border-color: var(--line); }
   .toolbar-menu { display: none; position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
@@ -75,6 +77,11 @@
     background: transparent; text-align: left; }
   .toolbar-item:hover, .toolbar-item.on { background: var(--panel2); border-color: var(--accent); }
   .toolbar-item .nm { flex: 1; }
+  .toolbar-item-icon { width: 16px; height: 16px; color: var(--muted); }
+  .list-icon { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 2px; }
+  .kv button .ui-icon, .num-stepper .ui-icon { width: 14px; height: 14px; margin: auto; }
+  .toolbar-item:disabled { cursor: not-allowed; opacity: .42; filter: grayscale(1); }
+  .toolbar-item:disabled:hover { border-color: transparent; background: transparent; }
   #status { grid-area: status; display: flex; align-items: center; gap: 16px; padding: 0 12px;
     background: var(--panel); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
   #status b { color: var(--fg); font-weight: 600; }
@@ -101,7 +108,7 @@
 </head>
 <body>
 <header>
-  <span class="title">▦ LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.4.1</span></span>
+  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM9 5v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.5.0</span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -123,11 +130,11 @@
 <div class="canvas-wrap" id="cw">
   <canvas id="cv"></canvas>
   <div class="bottom-toolbar" aria-label="編輯工具列">
-    <span class="toolbar-btn toolbar-status" id="toolStatus" title="目前放置類型" aria-live="polite">▭</span>
-    <div class="toolbar-group"><button class="toolbar-btn" data-category="rect" title="方框元件">▭</button><div class="toolbar-menu" id="menu-rect"></div></div>
-    <div class="toolbar-group"><button class="toolbar-btn" data-category="marker" title="機關與開關">◇</button><div class="toolbar-menu" id="menu-marker"></div></div>
-    <div class="toolbar-group"><button class="toolbar-btn" data-category="node" title="出生、中繼與目的">⚑</button><div class="toolbar-menu" id="menu-node"></div></div>
-    <button class="toolbar-btn" id="btnAddType" title="新增自訂類型">＋</button>
+    <span class="toolbar-btn toolbar-status" id="toolStatus" title="目前放置類型" aria-live="polite"></span>
+    <div class="toolbar-group"><button class="toolbar-btn" data-category="rect" title="方框元件"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 15h6"/></svg></button><div class="toolbar-menu" id="menu-rect"></div></div>
+    <div class="toolbar-group"><button class="toolbar-btn" data-category="marker" title="機關與開關"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 7 7-7 7-7-7 7-7Z"/><path d="M9 12h6"/></svg></button><div class="toolbar-menu" id="menu-marker"></div></div>
+    <div class="toolbar-group"><button class="toolbar-btn" data-category="node" title="出生、中繼與目的"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><path d="M7.8 8.2 10.7 15M16.2 8.2 13.3 15"/></svg></button><div class="toolbar-menu" id="menu-node"></div></div>
+    <button class="toolbar-btn" id="btnAddType" title="新增自訂類型"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
 </div>
 

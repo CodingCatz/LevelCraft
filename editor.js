@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const VERSION = '0.4.1';
+const VERSION = '0.5.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -30,8 +30,7 @@ const S = {
   world: { w: 80, h: 20 },
   snap: 0.5,
   ppu: 20,                 // 螢幕顯示比例（px per unit），不寫入 JSON
-  spawn: { x: 3, y: 15 },
-  els: [],                 // { id, kind:'rect'|'point', type, x, y, w?, h?, props:{}, links:[] }
+  els: [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, props: {}, links: [] }],
   types: DEFAULT_TYPES.map(t => ({ ...t })),
   tool: 'rect',
   activeType: 'ground',
@@ -50,12 +49,12 @@ function newId(prefix) {
 // ---------- 復原 ----------
 const undoStack = [], redoStack = [];
 function snapshot() {
-  return JSON.stringify({ name: S.name, world: S.world, snap: S.snap, spawn: S.spawn, els: S.els, types: S.types });
+  return JSON.stringify({ name: S.name, world: S.world, snap: S.snap, els: S.els, types: S.types });
 }
 function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
 function restore(str) {
   const d = JSON.parse(str);
-  S.name = d.name; S.world = d.world; S.snap = d.snap; S.spawn = d.spawn; S.els = d.els; S.types = d.types;
+  S.name = d.name; S.world = d.world; S.snap = d.snap; S.els = d.els; S.types = d.types;
   clearSelection();
 }
 function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); syncInputs(); renderAll(); }
@@ -66,6 +65,23 @@ const $ = sel => document.querySelector(sel);
 const cv = $('#cv'), ctx = cv.getContext('2d'), cw = $('#cw');
 const multiDeleteDlg = $('#multiDeleteDlg');
 let pendingDeleteIds = [];
+
+const icon = (name, className = '') => {
+  const paths = {
+    rect: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M7 15h6"/>',
+    marker: '<path d="m12 3 7 7-7 7-7-7 7-7Z"/><path d="M9 12h6"/>',
+    node: '<circle cx="6" cy="7" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><path d="M7.8 8.2 10.7 15M16.2 8.2 13.3 15"/>',
+    add: '<path d="M12 5v14M5 12h14"/>',
+    point: '<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+    marquee: '<rect x="4" y="5" width="16" height="14" rx="1" stroke-dasharray="3 2"/><path d="M8 9h8M8 15h8"/>',
+    pan: '<path d="M8 21V11a1.7 1.7 0 0 1 3.4 0v4.2V7.5a1.7 1.7 0 0 1 3.4 0v7.7V9.4a1.7 1.7 0 0 1 3.4 0v5.8l1-1a1.7 1.7 0 0 1 2.4 2.4l-3.5 3.5A4 4 0 0 1 15.3 22H12a4 4 0 0 1-4-4Z"/>',
+    zoom: '<circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5M10.5 8v5M8 10.5h5"/>',
+    trash: '<path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13M10 11v5M14 11v5"/>',
+    up: '<path d="m7 14 5-5 5 5"/>',
+    down: '<path d="m7 10 5 5 5-5"/>',
+  };
+  return `<svg class="ui-icon ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.rect}</svg>`;
+};
 
 // ---------- 座標轉換 ----------
 const scale = () => S.ppu * S.view.zoom;
@@ -78,6 +94,20 @@ function round4(v) { return Math.round(v * 10000) / 10000; }
 function typeDef(name) { return S.types.find(t => t.name === name); }
 function typeColor(name) { const t = typeDef(name); return t ? t.color : '#888'; }
 function typeShape(name) { const t = typeDef(name); return t ? t.shape : 'rect'; }
+function singletonElement(type) { return S.els.find(e => e.type === type); }
+function isSingletonType(type) { return type === 'spawn' || type === 'goal'; }
+function canUseType(type, exceptId = null) {
+  return !isSingletonType(type) || !S.els.some(e => e.type === type && e.id !== exceptId);
+}
+function singletonLockedMessage(type) {
+  return `畫面上已有${type === 'spawn' ? '出生點' : '目的地'}，請先刪除現有的才能新增`;
+}
+function normalizeSingletonNodes() {
+  for (const type of ['spawn', 'goal']) {
+    let found = false;
+    S.els = S.els.filter(e => e.type !== type || !found && (found = true));
+  }
+}
 
 // =====================================================================
 //  繪製
@@ -99,7 +129,6 @@ function draw() {
   for (const e of S.els) if (e.kind === 'rect') drawRect(e);
   for (const e of S.els) if (e.kind === 'point') drawPoint(e);
   drawLinks();
-  drawSpawn();
   drawSelection();
   drawMarquee();
 }
@@ -157,20 +186,6 @@ function drawPoint(e) {
   ctx.strokeStyle = '#0d0f14'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = '#cdd3e2'; ctx.font = '11px ui-sans-serif, sans-serif';
   ctx.fillText(`${e.type}`, a.x + rad + 3, a.y + 4);
-}
-
-function drawSpawn() {
-  const a = toScreen(S.spawn.x, S.spawn.y);
-  ctx.save();
-  ctx.fillStyle = '#f6e05e';
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y - 12); ctx.lineTo(a.x + 10, a.y - 4); ctx.lineTo(a.x, a.y); ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#f6e05e'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(a.x, a.y - 12); ctx.lineTo(a.x, a.y + 4); ctx.stroke();
-  ctx.fillStyle = '#f6e05e'; ctx.font = 'bold 10px ui-sans-serif';
-  ctx.fillText('SPAWN', a.x + 6, a.y - 6);
-  ctx.restore();
 }
 
 function drawLinks() {
@@ -309,6 +324,7 @@ let toolbarTransientTimer = null;
 const MARQUEE_THRESHOLD_PX = 4;
 
 function placeActiveType(u) {
+  if (!canUseType(S.activeType)) { flashHint(singletonLockedMessage(S.activeType)); renderToolbar(); return; }
   const shape = typeShape(S.activeType);
   pushUndo();
   if (shape === 'rect') {
@@ -334,11 +350,11 @@ function updateToolbarStatus() {
   const indicator = $('#toolStatus');
   if (!indicator) return;
   const status = drag?.mode === 'marquee' ? 'marquee' : drag?.mode === 'pan' ? 'pan' : toolbarTransientStatus;
-  if (status === 'marquee') { indicator.textContent = '⬚'; indicator.style.color = '#fff'; indicator.title = '框選中'; return; }
-  if (status === 'pan') { indicator.textContent = '✋'; indicator.style.color = '#e7eaf3'; indicator.title = '平移中'; return; }
-  if (status === 'zoom') { indicator.textContent = '⌕'; indicator.style.color = '#e7eaf3'; indicator.title = '縮放中'; return; }
+  if (status === 'marquee') { indicator.innerHTML = icon('marquee'); indicator.style.color = '#fff'; indicator.title = '框選中'; return; }
+  if (status === 'pan') { indicator.innerHTML = icon('pan'); indicator.style.color = '#e7eaf3'; indicator.title = '平移中'; return; }
+  if (status === 'zoom') { indicator.innerHTML = icon('zoom'); indicator.style.color = '#e7eaf3'; indicator.title = '縮放中'; return; }
   const type = typeDef(S.activeType) || { name: '未知類型', color: '#888', shape: 'rect' };
-  indicator.textContent = typeCategory(type) === 'rect' ? '▭' : typeCategory(type) === 'marker' ? '◇' : '⚑';
+  indicator.innerHTML = icon(typeCategory(type));
   indicator.style.color = type.color;
   indicator.title = `目前放置：${type.name}`;
 }
@@ -544,6 +560,7 @@ $('#multiDeleteCancel').addEventListener('click', () => multiDeleteDlg.close());
 multiDeleteDlg.addEventListener('close', () => { pendingDeleteIds = []; });
 function duplicateSel() {
   const e = selected(); if (!e) return;
+  if (isSingletonType(e.type)) { flashHint(singletonLockedMessage(e.type)); return; }
   pushUndo();
   const c = JSON.parse(JSON.stringify(e));
   c.id = newId(e.type);
@@ -584,8 +601,11 @@ function renderToolbar() {
     const types = orderedTypesFor(category);
     for (const t of types) {
       const item = document.createElement('button');
-      item.className = 'toolbar-item' + (t.name === S.activeType ? ' on' : '');
-      item.innerHTML = `<span class="sw" style="background:${t.color}"></span><span class="nm">${escapeHtml(t.name)}</span><span>${t.shape === 'rect' ? '▭' : '◇'}</span>`;
+      const isLocked = !canUseType(t.name);
+      item.className = 'toolbar-item' + (t.name === S.activeType ? ' on' : '') + (isLocked ? ' locked' : '');
+      item.disabled = isLocked;
+      item.title = isLocked ? singletonLockedMessage(t.name) : `選擇 ${t.name}`;
+      item.innerHTML = `<span class="sw" style="background:${t.color}"></span><span class="nm">${escapeHtml(t.name)}</span>${icon(t.shape === 'rect' ? 'rect' : 'point', 'toolbar-item-icon')}`;
       item.onclick = () => { S.activeType = t.name; setTool(t.shape === 'rect' ? 'rect' : 'marker'); closeToolbarMenus(); renderAll(); };
       menu.appendChild(item);
     }
@@ -619,7 +639,7 @@ function renderProps() {
   }
   // 自訂屬性
   html += `<h3 style="margin:10px 0 6px;font-size:11px;color:var(--muted)">自訂屬性 props</h3><div class="props" id="pProps"></div>
-    <button id="pAddProp" style="width:100%;margin-top:4px">＋ 屬性</button>`;
+    <button id="pAddProp" style="width:100%;margin-top:4px">新增屬性</button>`;
   // 連動
   const linkOpts = S.els.filter(x => x.id !== e.id).map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.id)} (${escapeHtml(x.type)})</option>`).join('');
   html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)">連動 links（targetId）</h3>
@@ -634,7 +654,7 @@ function renderProps() {
   const pp = $('#pProps');
   for (const [k, v] of Object.entries(e.props || {})) {
     const row = document.createElement('div'); row.className = 'kv';
-    row.innerHTML = `<input value="${escapeHtml(k)}" data-k><input value="${escapeHtml(String(v))}" data-v><button data-x>✕</button>`;
+    row.innerHTML = `<input value="${escapeHtml(k)}" data-k><input value="${escapeHtml(String(v))}" data-v><button data-x title="刪除屬性" aria-label="刪除屬性">${icon('trash')}</button>`;
     row.querySelector('[data-k]').addEventListener('change', ev2 => { const nk = ev2.target.value; const val = e.props[k]; delete e.props[k]; e.props[nk] = val; autosave(); });
     row.querySelector('[data-v]').addEventListener('change', ev2 => { e.props[row.querySelector('[data-k]').value] = ev2.target.value; autosave(); });
     row.querySelector('[data-x]').addEventListener('click', () => { pushUndo(); delete e.props[k]; renderProps(); autosave(); });
@@ -646,7 +666,7 @@ function renderProps() {
   const pl = $('#pLinks');
   for (const tid of (e.links || [])) {
     const row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = `<span style="flex:1" class="small">→ ${escapeHtml(tid)}</span><button data-x class="danger">✕</button>`;
+    row.innerHTML = `<span style="flex:1" class="small">連至 ${escapeHtml(tid)}</span><button data-x class="danger" title="移除連動" aria-label="移除連動">${icon('trash')}</button>`;
     row.querySelector('[data-x]').onclick = () => { pushUndo(); e.links = e.links.filter(x => x !== tid); renderProps(); draw(); autosave(); };
     pl.appendChild(row);
   }
@@ -657,9 +677,10 @@ function renderProps() {
   const typeSel = $('#pType');
   typeSel.onchange = ev2 => {
     if (ev2.target.value === '__free') { $('#pFreeRow').style.display = ''; return; }
+    if (!canUseType(ev2.target.value, e.id)) { flashHint(singletonLockedMessage(ev2.target.value)); renderProps(); return; }
     pushUndo(); e.type = ev2.target.value; renderAll(); autosave();
   };
-  $('#pFree').onchange = ev2 => { const nv = ev2.target.value.trim(); if (nv) { pushUndo(); e.type = nv; renderAll(); autosave(); } };
+  $('#pFree').onchange = ev2 => { const nv = ev2.target.value.trim(); if (nv) { if (!canUseType(nv, e.id)) { flashHint(singletonLockedMessage(nv)); renderProps(); return; } pushUndo(); e.type = nv; renderAll(); autosave(); } };
   const bindNum = (id, key) => { const el = $(id); if (!el) return; el.onchange = ev2 => { pushUndo(); e[key] = round4(parseFloat(ev2.target.value) || 0); renderAll(); autosave(); }; };
   bindNum('#pX', 'x'); bindNum('#pY', 'y'); bindNum('#pW', 'w'); bindNum('#pH', 'h');
   $('#pDel').onclick = deleteSel; $('#pDup').onclick = duplicateSel;
@@ -680,7 +701,7 @@ function installNumberSteppers(root = document) {
 
     const stepper = document.createElement('span');
     stepper.className = 'num-stepper';
-    stepper.innerHTML = '<button type="button" aria-label="增加數值" title="增加">▲</button><button type="button" aria-label="減少數值" title="減少">▼</button>';
+    stepper.innerHTML = `<button type="button" aria-label="增加數值" title="增加">${icon('up')}</button><button type="button" aria-label="減少數值" title="減少">${icon('down')}</button>`;
     const changeValue = direction => {
       try {
         direction > 0 ? input.stepUp() : input.stepDown();
@@ -702,7 +723,7 @@ function renderList() {
     const d = document.createElement('div');
     d.className = 'li' + (e.id === S.selId ? ' on' : '');
     d.innerHTML = `<span class="sw" style="background:${typeColor(e.type)}"></span>
-      <span class="id">${escapeHtml(e.id)}</span><span class="ty">${e.kind === 'rect' ? '▭' : '◈'} ${escapeHtml(e.type)}</span>`;
+      <span class="id">${escapeHtml(e.id)}</span><span class="ty">${icon(e.kind === 'rect' ? 'rect' : 'point', 'list-icon')} ${escapeHtml(e.type)}</span>`;
     d.onclick = () => { selectIds([e.id]); focusOn(e); renderAll(); };
     el.appendChild(d);
   }
@@ -791,14 +812,17 @@ $('#tdSave').onclick = () => {
 //  匯入 / 匯出
 // =====================================================================
 function serialize() {
+  const spawn = singletonElement('spawn');
   return {
     format: FORMAT,
     name: S.name,
     world: { wUnit: S.world.w, hUnit: S.world.h },
     snap: S.snap,
-    spawnUnit: { x: S.spawn.x, y: S.spawn.y },
+    // 保留 v1 頂層欄位；未放出生點時以 null 表示，避免捏造不存在的座標。
+    spawnUnit: spawn ? { x: spawn.x, y: spawn.y } : null,
     types: S.types.map(t => ({ ...t })),
-    elements: S.els.map(e => {
+    // spawn 由頂層 spawnUnit 表示，維持既有消費端的 elements 外觀。
+    elements: S.els.filter(e => e.type !== 'spawn').map(e => {
       const o = { id: e.id, kind: e.kind, type: e.type, xUnit: e.x, yUnit: e.y };
       if (e.kind === 'rect') { o.wUnit = e.w; o.hUnit = e.h; }
       if (e.props && Object.keys(e.props).length) o.props = { ...e.props };
@@ -813,7 +837,6 @@ function deserialize(d) {
   S.name = d.name || 'level';
   S.world = { w: d.world?.wUnit ?? 80, h: d.world?.hUnit ?? 20 };
   S.snap = d.snap ?? 0.5;
-  S.spawn = { x: d.spawnUnit?.x ?? 3, y: d.spawnUnit?.y ?? 15 };
   if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect' }));
   S.els = (d.elements || []).map(e => ({
     id: e.id, kind: e.kind || (e.wUnit != null ? 'rect' : 'point'), type: e.type || 'unknown',
@@ -821,6 +844,11 @@ function deserialize(d) {
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
     props: e.props || {}, links: e.links || [],
   }));
+  normalizeSingletonNodes();
+  // 舊存檔只有 spawnUnit；還原為可選取、拖曳、刪除的一般點元素。
+  if (d.spawnUnit && !singletonElement('spawn')) {
+    S.els.unshift({ id: newId('spawn'), kind: 'point', type: 'spawn', x: d.spawnUnit.x ?? 3, y: d.spawnUnit.y ?? 15, props: {}, links: [] });
+  }
   clearSelection();
   // 重算 uid 避免撞號
   uid = 1;
@@ -876,8 +904,8 @@ installNumberSteppers();
 $('#btnNew').onclick = () => {
   if (!confirm('清空目前關卡，開新的？（會存進復原）')) return;
   pushUndo();
-  S.name = 'level-01'; S.world = { w: 80, h: 20 }; S.snap = 0.5; S.spawn = { x: 3, y: 15 };
-  S.els = []; clearSelection(); uid = 1;
+  S.name = 'level-01'; S.world = { w: 80, h: 20 }; S.snap = 0.5;
+  S.els = [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, props: {}, links: [] }]; clearSelection(); uid = 1;
   syncInputs(); renderAll(); autosave();
 };
 
