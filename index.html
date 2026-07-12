@@ -101,7 +101,7 @@
 </head>
 <body>
 <header>
-  <span class="title">▦ LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.4.0</span></span>
+  <span class="title">▦ LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.4.1</span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -169,6 +169,16 @@
       <button type="button" class="pri" id="tdSave">儲存</button>
     </div>
   </form>
+</dialog>
+
+<!-- 多選刪除確認對話框 -->
+<dialog id="multiDeleteDlg" aria-labelledby="multiDeleteTitle">
+  <div class="dh" id="multiDeleteTitle">刪除已選取元素</div>
+  <div class="db" id="multiDeleteMessage">確定要刪除已選取的元素嗎？</div>
+  <div class="df">
+    <button type="button" id="multiDeleteCancel">取消</button>
+    <button type="button" class="danger" id="multiDeleteConfirm">刪除</button>
+  </div>
 </dialog>
 
 <!-- 匯入/匯出對話框 -->

@@ -3,6 +3,13 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.4.1] - 2026-07-12
+
+### Fixed
+- 底部工具列及上拉選單的滑鼠事件不再穿透到畫布，切換工具不會同時放置或選取元素。
+- 多選刪除會完整移除選取集合及其關聯 links；右鍵對多選集合操作會先以一致介面的對話框確認。
+- 多選後拖曳其中任一選取元素，整組會維持相對位置一起移動。
+
 ## [0.4.0] - 2026-07-12
 
 ### Changed
@@ -59,6 +66,7 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
+[0.4.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.4.1
 [0.2.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.0
 [0.2.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.2.1
 [0.3.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.3.0

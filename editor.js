@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point' },
 ];
 
-const VERSION = '0.4.0';
+const VERSION = '0.4.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -64,6 +64,8 @@ function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); res
 // ---------- DOM ----------
 const $ = sel => document.querySelector(sel);
 const cv = $('#cv'), ctx = cv.getContext('2d'), cw = $('#cw');
+const multiDeleteDlg = $('#multiDeleteDlg');
+let pendingDeleteIds = [];
 
 // ---------- 座標轉換 ----------
 const scale = () => S.ppu * S.view.zoom;
@@ -342,6 +344,7 @@ function updateToolbarStatus() {
 }
 
 cw.addEventListener('mousedown', ev => {
+  if (ev.target.closest('.bottom-toolbar')) return;
   if (ev.button === 1 || (ev.button === 0 && spaceDown)) { // 平移
     drag = { mode: 'pan', sx: ev.clientX, sy: ev.clientY, vx: S.view.x, vy: S.view.y };
     updateToolbarStatus();
@@ -363,9 +366,18 @@ cw.addEventListener('mousedown', ev => {
 
   const hit = hitTest(u.x, u.y);
   if (hit) {
-    selectIds([hit.id]);
+    const ids = selectionIds();
     pushUndo();
-    drag = { mode: 'move', e: hit, grabU: u, ox: hit.x, oy: hit.y };
+    if (ids.length > 1 && ids.includes(hit.id)) {
+      const starts = Object.fromEntries(ids.map(id => {
+        const element = S.els.find(item => item.id === id);
+        return [id, { x: element.x, y: element.y }];
+      }));
+      drag = { mode: 'moveGroup', ids, starts, grabU: u };
+    } else {
+      selectIds([hit.id]);
+      drag = { mode: 'move', e: hit, grabU: u, ox: hit.x, oy: hit.y };
+    }
   } else {
     clearSelection();
     drag = { mode: 'pending', start: u, end: u, sx: ev.clientX, sy: ev.clientY };
@@ -374,11 +386,17 @@ cw.addEventListener('mousedown', ev => {
 });
 
 cw.addEventListener('contextmenu', ev => {
+  if (ev.target.closest('.bottom-toolbar')) return;
   ev.preventDefault();
   const rect = cw.getBoundingClientRect();
   const u = toUnit(ev.clientX - rect.left, ev.clientY - rect.top);
   const hit = hitTest(u.x, u.y);
   if (!hit) return;
+  const ids = selectionIds();
+  if (ids.length > 1 && ids.includes(hit.id)) {
+    showMultiDeleteDialog(ids);
+    return;
+  }
   selectIds([hit.id]);
   deleteSel();
 });
@@ -428,6 +446,17 @@ window.addEventListener('mousemove', ev => {
     e.h = round4(Math.max(S.snap || 0.1, Math.abs(y2 - y1)));
     renderProps(); draw(); return;
   }
+  if (drag.mode === 'moveGroup') {
+    cw.style.cursor = 'move';
+    const dx = u.x - drag.grabU.x, dy = u.y - drag.grabU.y;
+    for (const id of drag.ids) {
+      const e = S.els.find(item => item.id === id);
+      const start = drag.starts[id];
+      if (!e || !start) continue;
+      e.x = round4(snapU(start.x + dx)); e.y = round4(snapU(start.y + dy));
+    }
+    renderProps(); draw(); return;
+  }
   if (drag.mode === 'marquee') {
     drag.end = u;
     selectIds(marqueeSelection(drag.start, drag.end));
@@ -437,7 +466,7 @@ window.addEventListener('mousemove', ev => {
 
 window.addEventListener('mouseup', () => {
   if (drag?.mode === 'pending') placeActiveType(drag.start);
-  if (drag && (drag.mode === 'move' || drag.mode === 'resize')) autosave();
+  if (drag && (drag.mode === 'move' || drag.mode === 'moveGroup' || drag.mode === 'resize')) autosave();
   drag = null;
   cw.style.cursor = 'crosshair';
   updateToolbarStatus();
@@ -489,13 +518,30 @@ window.addEventListener('keydown', ev => {
 });
 window.addEventListener('keyup', ev => { if (ev.code === 'Space') spaceDown = false; });
 
-function deleteSel() {
-  const e = selected(); if (!e) return;
+function deleteIds(ids) {
+  const idSet = new Set(ids);
+  if (!idSet.size) return;
   pushUndo();
-  S.els = S.els.filter(x => x !== e);
-  for (const x of S.els) if (x.links) x.links = x.links.filter(id => id !== e.id);
+  S.els = S.els.filter(x => !idSet.has(x.id));
+  for (const x of S.els) if (x.links) x.links = x.links.filter(id => !idSet.has(id));
   clearSelection(); renderAll(); autosave();
 }
+function deleteSel() { deleteIds(selectionIds()); }
+
+function showMultiDeleteDialog(ids) {
+  pendingDeleteIds = [...ids];
+  $('#multiDeleteMessage').textContent = `確定要刪除已選取的 ${pendingDeleteIds.length} 個元素嗎？`;
+  multiDeleteDlg.showModal();
+}
+
+$('#multiDeleteConfirm').addEventListener('click', () => {
+  const ids = pendingDeleteIds;
+  pendingDeleteIds = [];
+  multiDeleteDlg.close();
+  deleteIds(ids);
+});
+$('#multiDeleteCancel').addEventListener('click', () => multiDeleteDlg.close());
+multiDeleteDlg.addEventListener('close', () => { pendingDeleteIds = []; });
 function duplicateSel() {
   const e = selected(); if (!e) return;
   pushUndo();
