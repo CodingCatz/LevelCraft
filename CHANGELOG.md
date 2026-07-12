@@ -3,6 +3,12 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.9.0] - 2026-07-12
+
+### Added
+- 可把兩個以上未群組元素建立為編輯器群組；群組以青色實線外框呈現，點擊任何成員會選取整組，拖曳、複製與刪除皆會以整組處理，並可從屬性面板解散。
+- 群組關係會隨 undo/redo 與 localStorage autosave 保留；為維持 `levelcraft/v1` 遊戲端格式，正式匯出 JSON 不含群組資料。
+
 ## [0.8.1] - 2026-07-12
 
 ### Fixed

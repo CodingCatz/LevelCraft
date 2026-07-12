@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.8.1';
+const VERSION = '0.9.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -36,6 +36,7 @@ const S = {
   activeType: 'ground',
   selId: null,
   multiSelIds: [],
+  groups: [], // 僅編輯器編排資料；不寫入遊戲端 levelcraft/v1 匯出。
   view: { x: -40, y: -40, zoom: 1 }, // zoom 疊加在 ppu 上；view.x/y 為畫布像素偏移
 };
 
@@ -49,12 +50,13 @@ function newId(prefix) {
 // ---------- 復原 ----------
 const undoStack = [], redoStack = [];
 function snapshot() {
-  return JSON.stringify({ name: S.name, world: S.world, snap: S.snap, els: S.els, types: S.types });
+  return JSON.stringify({ name: S.name, world: S.world, snap: S.snap, els: S.els, types: S.types, groups: S.groups });
 }
 function pushUndo() { undoStack.push(snapshot()); if (undoStack.length > 100) undoStack.shift(); redoStack.length = 0; }
 function restore(str) {
   const d = JSON.parse(str);
-  S.name = d.name; S.world = d.world; S.snap = d.snap; S.els = d.els; S.types = d.types;
+  S.name = d.name; S.world = d.world; S.snap = d.snap; S.els = d.els; S.types = d.types; S.groups = d.groups || [];
+  normalizeGroups();
   clearSelection();
 }
 function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); syncInputs(); renderAll(); }
@@ -77,6 +79,8 @@ const icon = (name, className = '') => {
     pan: '<path d="M8 21V11a1.7 1.7 0 0 1 3.4 0v4.2V7.5a1.7 1.7 0 0 1 3.4 0v7.7V9.4a1.7 1.7 0 0 1 3.4 0v5.8l1-1a1.7 1.7 0 0 1 2.4 2.4l-3.5 3.5A4 4 0 0 1 15.3 22H12a4 4 0 0 1-4-4Z"/>',
     zoom: '<circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5M10.5 8v5M8 10.5h5"/>',
     trash: '<path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13M10 11v5M14 11v5"/>',
+    group: '<rect x="4" y="4" width="10" height="10" rx="1"/><rect x="10" y="10" width="10" height="10" rx="1"/>',
+    ungroup: '<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h2M7 11v2" stroke-dasharray="2 2"/>',
     up: '<path d="m7 14 5-5 5 5"/>',
     down: '<path d="m7 10 5 5 5-5"/>',
   };
@@ -139,8 +143,20 @@ function draw() {
   for (const e of S.els) if (e.kind === 'rect') drawRect(e);
   for (const e of S.els) if (e.kind === 'point') drawPoint(e);
   drawLinks();
+  drawGroups();
   drawSelection();
   drawMarquee();
+}
+
+function drawGroups() {
+  ctx.save();
+  ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 2; ctx.setLineDash([]);
+  for (const group of S.groups) {
+    const bounds = groupBounds(group); if (!bounds) continue;
+    const a = toScreen(bounds.left, bounds.top), b = toScreen(bounds.right, bounds.bottom);
+    ctx.strokeRect(a.x - 6, a.y - 6, Math.max(12, b.x - a.x + 12), Math.max(12, b.y - a.y + 12));
+  }
+  ctx.restore();
 }
 
 function drawGrid(r) {
@@ -305,6 +321,37 @@ function selectIds(ids) {
 }
 function clearSelection() { selectIds([]); }
 
+function groupForElement(id) { return S.groups.find(group => group.memberIds.includes(id)) || null; }
+function groupForSelection(ids = selectionIds()) {
+  const group = ids.length ? groupForElement(ids[0]) : null;
+  return group && ids.length === group.memberIds.length && ids.every(id => group.memberIds.includes(id)) ? group : null;
+}
+function expandGroupIds(ids) {
+  const expanded = new Set(ids);
+  for (const id of ids) for (const memberId of groupForElement(id)?.memberIds || []) expanded.add(memberId);
+  return [...expanded];
+}
+function normalizeGroups() {
+  const existingIds = new Set(S.els.map(e => e.id));
+  const assigned = new Set();
+  S.groups = (S.groups || []).map(group => ({ id: group.id, memberIds: (group.memberIds || []).filter(id => existingIds.has(id) && !assigned.has(id)) }))
+    .filter(group => group.id && group.memberIds.length >= 2 && (group.memberIds.forEach(id => assigned.add(id)), true));
+}
+function newGroupId() {
+  let index = 1, id;
+  do { id = `group-${index++}`; } while (S.groups.some(group => group.id === id));
+  return id;
+}
+function groupBounds(group) {
+  const members = group.memberIds.map(id => S.els.find(e => e.id === id)).filter(Boolean);
+  if (!members.length) return null;
+  const left = Math.min(...members.map(e => e.x));
+  const top = Math.min(...members.map(e => e.y));
+  const right = Math.max(...members.map(e => e.kind === 'rect' ? e.x + e.w : e.x));
+  const bottom = Math.max(...members.map(e => e.kind === 'rect' ? e.y + e.h : e.y));
+  return { left, top, right, bottom };
+}
+
 function marqueeSelection(a, b) {
   const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
   const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
@@ -419,12 +466,15 @@ cw.addEventListener('mousedown', ev => {
   if (hit) {
     const ids = selectionIds();
     pushUndo();
-    if (ids.length > 1 && ids.includes(hit.id)) {
-      const starts = Object.fromEntries(ids.map(id => {
+    const hitGroup = groupForElement(hit.id);
+    const moveIds = hitGroup?.memberIds || ids;
+    if (hitGroup) selectIds(moveIds);
+    if (moveIds.length > 1 && moveIds.includes(hit.id)) {
+      const starts = Object.fromEntries(moveIds.map(id => {
         const element = S.els.find(item => item.id === id);
         return [id, { x: element.x, y: element.y }];
       }));
-      drag = { mode: 'moveGroup', ids, starts, grabU: u };
+      drag = { mode: 'moveGroup', ids: moveIds, starts, grabU: u };
     } else {
       selectIds([hit.id]);
       drag = { mode: 'move', e: hit, grabU: u, ox: hit.x, oy: hit.y };
@@ -444,12 +494,13 @@ cw.addEventListener('contextmenu', ev => {
   if (S.tool === 'path') { const target = pathTarget(); const index = hitPathNode(target, u.x, u.y); if (index >= 0) { pushUndo(); target.path.splice(index, 1); if (!target.path.length) delete target.path; autosave(); renderToolbox(); draw(); } return; }
   const hit = hitTest(u.x, u.y);
   if (!hit) return;
-  const ids = selectionIds();
-  if (ids.length > 1 && ids.includes(hit.id)) {
-    showMultiDeleteDialog(ids);
+  const ids = expandGroupIds(selectionIds());
+  const hitGroup = groupForElement(hit.id);
+  if (hitGroup || (ids.length > 1 && ids.includes(hit.id))) {
+    showMultiDeleteDialog(hitGroup?.memberIds || ids);
     return;
   }
-  selectIds([hit.id]);
+  selectIds(groupForElement(hit.id)?.memberIds || [hit.id]);
   deleteSel();
 });
 
@@ -572,11 +623,12 @@ window.addEventListener('keydown', ev => {
 window.addEventListener('keyup', ev => { if (ev.code === 'Space') spaceDown = false; });
 
 function deleteIds(ids) {
-  const idSet = new Set(ids);
+  const idSet = new Set(expandGroupIds(ids));
   if (!idSet.size) return;
   pushUndo();
   S.els = S.els.filter(x => !idSet.has(x.id));
   for (const x of S.els) if (x.links) x.links = x.links.filter(id => !idSet.has(id));
+  normalizeGroups();
   clearSelection(); renderAll(); autosave();
 }
 function deleteSel() { deleteIds(selectionIds()); }
@@ -596,14 +648,28 @@ $('#multiDeleteConfirm').addEventListener('click', () => {
 $('#multiDeleteCancel').addEventListener('click', () => multiDeleteDlg.close());
 multiDeleteDlg.addEventListener('close', () => { pendingDeleteIds = []; });
 function duplicateSel() {
-  const e = selected(); if (!e) return;
-  if (isSingletonType(e.type)) { flashHint(singletonLockedMessage(e.type)); return; }
+  const ids = expandGroupIds(selectionIds());
+  const originals = ids.map(id => S.els.find(e => e.id === id)).filter(Boolean); if (!originals.length) return;
+  if (originals.some(e => isSingletonType(e.type))) { flashHint('出生點與目的地不可複製'); return; }
   pushUndo();
-  const c = JSON.parse(JSON.stringify(e));
-  c.id = newId(e.type);
-  c.x = round4(e.x + (S.snap || 1)); c.y = round4(e.y + (S.snap || 1));
-  c.links = [];
-  S.els.push(c); selectIds([c.id]); renderAll(); autosave();
+  const copiedIds = originals.map(e => {
+    const c = JSON.parse(JSON.stringify(e));
+    c.id = newId(e.type); c.x = round4(e.x + (S.snap || 1)); c.y = round4(e.y + (S.snap || 1)); c.links = [];
+    S.els.push(c); return c.id;
+  });
+  if (groupForSelection(ids)) S.groups.push({ id: newGroupId(), memberIds: copiedIds });
+  selectIds(copiedIds); renderAll(); autosave();
+}
+
+function createGroup() {
+  const ids = selectionIds();
+  if (ids.length < 2) return;
+  if (ids.some(id => groupForElement(id))) { flashHint('群組不能重疊，請先解散既有群組'); return; }
+  pushUndo(); S.groups.push({ id: newGroupId(), memberIds: [...ids] }); renderAll(); autosave();
+}
+function ungroupSelection() {
+  const group = groupForSelection(); if (!group) return;
+  pushUndo(); S.groups = S.groups.filter(item => item.id !== group.id); renderAll(); autosave();
 }
 
 // =====================================================================
@@ -684,6 +750,12 @@ function renderProps() {
     <div id="pLinks"></div>
     <div class="row" style="margin-top:4px"><select id="pLinkSel" style="flex:1"><option value="">選目標…</option>${linkOpts}</select>
     <button id="pAddLink">連</button></div>`;
+  const selectedGroup = groupForSelection();
+  const canCreateGroup = selectionIds().length >= 2 && !selectionIds().some(id => groupForElement(id));
+  html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)">群組（編輯器排版）</h3>
+    <div class="small" style="margin-bottom:6px">群組會一起選取、搬移、複製與刪除；不匯出給遊戲端。</div>
+    <div class="row"><button id="pGroup" style="flex:1" ${canCreateGroup ? '' : 'disabled'}>${icon('group')}建立群組</button>
+    <button id="pUngroup" style="flex:1" ${selectedGroup ? '' : 'disabled'}>${icon('ungroup')}解散群組</button></div>`;
   html += `<div class="row" style="margin-top:10px"><button class="danger" id="pDel" style="flex:1">刪除元素</button>
     <button id="pDup" style="flex:1">複製</button></div>`;
   box.innerHTML = html;
@@ -709,6 +781,8 @@ function renderProps() {
     pl.appendChild(row);
   }
   $('#pAddLink').onclick = () => { const v = $('#pLinkSel').value; if (!v) return; pushUndo(); e.links = e.links || []; if (!e.links.includes(v)) e.links.push(v); renderProps(); draw(); autosave(); };
+  $('#pGroup').onclick = createGroup;
+  $('#pUngroup').onclick = ungroupSelection;
 
   // 綁定基本欄位
   $('#pId').onchange = ev2 => { const nv = ev2.target.value.trim(); if (!nv || S.els.some(x => x !== e && x.id === nv)) { flashHint('ID 空白或重複'); renderProps(); return; } pushUndo(); const old = e.id; for (const x of S.els) if (x.links) x.links = x.links.map(id => id === old ? nv : id); e.id = nv; renderAll(); autosave(); };
@@ -853,9 +927,9 @@ $('#tdSave').onclick = () => {
 // =====================================================================
 //  匯入 / 匯出
 // =====================================================================
-function serialize() {
+function serialize(includeEditorState = false) {
   const spawn = singletonElement('spawn');
-  return {
+  const level = {
     format: FORMAT,
     name: S.name,
     world: { wUnit: S.world.w, hUnit: S.world.h },
@@ -878,6 +952,8 @@ function serialize() {
       return o;
     }),
   };
+  if (includeEditorState && S.groups.length) level.editor = { groups: S.groups.map(group => ({ id: group.id, memberIds: [...group.memberIds] })) };
+  return level;
 }
 
 function deserialize(d) {
@@ -892,6 +968,8 @@ function deserialize(d) {
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
     description: e.description || '', props: e.props || {}, links: e.links || [], path: Array.isArray(e.path) ? e.path.map(p => ({ x: p.x ?? 0, y: p.y ?? 0 })) : [],
   }));
+  S.groups = d.editor?.groups || [];
+  normalizeGroups();
   normalizeSingletonNodes();
   // 舊存檔只有 spawnUnit；還原為可選取、拖曳、刪除的一般點元素。
   if (d.spawnUnit && !singletonElement('spawn')) {
@@ -964,7 +1042,7 @@ let saveTimer = null;
 function autosave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(serialize())); } catch {}
+    try { localStorage.setItem(LS_KEY, JSON.stringify(serialize(true))); } catch {}
   }, 300);
 }
 function loadAutosave() {
