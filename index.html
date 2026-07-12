@@ -90,7 +90,12 @@
   .hint { color: var(--muted); font-size: 11px; margin-top: 6px; }
   .toolbox-actions { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
   .toolbox-actions button { display:flex; align-items:center; gap:6px; justify-content:center; width:100%; }
+  .toolbox-actions .toolbox-pair { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
   .toolbox-actions .ui-icon { width:16px; height:16px; }
+  .type-picker { position:relative; flex:1; }
+  .type-picker-trigger { display:flex; align-items:center; justify-content:space-between; width:100%; }
+  .type-picker-menu { display:none; position:absolute; z-index:3; top:calc(100% + 4px); left:0; width:100%; min-width:150px; padding:4px; background:var(--panel); border:1px solid var(--line); border-radius:6px; box-shadow:0 8px 20px #0008; }
+  .type-picker-menu.open { display:block; }
   textarea.description-input { height: 58px; font: inherit; resize: vertical; cursor: text; }
   .list { display: flex; flex-direction: column; gap: 2px; }
   .li { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: 5px; cursor: pointer; }
@@ -112,7 +117,7 @@
 </head>
 <body>
 <header>
-  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.10.1</span></span>
+  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag">v0.11.0</span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -127,15 +132,11 @@
     <div class="row"><label>高 H</label><input type="number" id="worldH" value="20" step="1" min="1"></div>
     <div class="row"><label>吸附</label><input type="number" id="snap" value="0.5" step="0.05" min="0"></div>
     <div class="row"><label>px/單位</label><input type="number" id="ppu" value="20" step="1" min="1" title="僅螢幕顯示比例，不寫入輸出"></div>
-    <button type="button" id="tbAddType"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>新增類型</button>
+    <button type="button" id="tbAddType" style="width:100%"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>新增類型</button>
   </div>
   <div class="sec">
     <h3>工具箱</h3>
-    <div class="toolbox-actions">
-      <button type="button" id="tbEditPath"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18c6 0 3-12 10-12"/></svg>編輯路徑</button>
-      <button type="button" id="tbGroup"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="10" height="10" rx="1"/><rect x="10" y="10" width="10" height="10" rx="1"/></svg>建立群組</button>
-      <button type="button" id="tbUngroup"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h2M7 11v2" stroke-dasharray="2 2"/></svg>解散群組</button>
-    </div>
+    <div class="toolbox-actions" id="toolboxActions"></div>
     <div id="tbPathInfo" class="small"></div>
   </div>
 </aside>
@@ -176,9 +177,11 @@
     <div class="db">
       <div class="row"><label>名稱</label><input type="text" id="tdName" placeholder="例：ground / spike / key"></div>
       <div class="row"><label>顏色</label><input type="color" id="tdColor" value="#4fd1c5" style="width:60px;padding:2px"></div>
-      <div class="row"><label title="形狀決定用「矩形」或「標記」工具放置。改名不會動到已放置元素的既有 type 字串。">形狀</label>
-        <select id="tdShape"><option value="rect">矩形 rect</option><option value="point">點 point</option></select>
+      <div class="row"><label title="類型決定用「矩形」或「標記」工具放置。改名不會動到已放置元素的既有 type 字串。">類型</label>
+        <input type="hidden" id="tdShape" value="rect">
+        <div class="type-picker"><button type="button" class="type-picker-trigger" id="tdShapeTrigger"></button><div class="type-picker-menu" id="tdShapeMenu"></div></div>
       </div>
+      <div class="row"><label>移動路徑</label><input type="checkbox" id="tdMovable" title="可使用工具箱的編輯路徑功能"></div>
       <div class="row"><label>描述</label><textarea id="tdDescription" class="description-input" placeholder="例：需要對應鑰匙才能開啟的門"></textarea></div>
     </div>
     <div class="df">
@@ -188,6 +191,17 @@
       <button type="button" class="pri" id="tdSave">儲存</button>
     </div>
   </form>
+</dialog>
+
+<!-- 元素連動面板 -->
+<dialog id="linkDlg" aria-labelledby="linkDlgTitle">
+  <div class="dh" id="linkDlgTitle">元素連動</div>
+  <div class="db">
+    <div class="small" style="margin-bottom:8px">資料參照，不會一起移動；要一起操作請用群組。</div>
+    <div id="tbLinks"></div>
+    <div class="row" style="margin-top:6px"><select id="tbLinkSel" style="flex:1"><option value="">選目標…</option></select><button type="button" id="tbAddLink">連</button></div>
+  </div>
+  <div class="df"><button type="button" id="tbLinkClose">關閉</button></div>
 </dialog>
 
 <!-- 多選刪除確認對話框 -->

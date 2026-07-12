@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.10.1';
+const VERSION = '0.11.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -79,6 +79,9 @@ const icon = (name, className = '') => {
     pan: '<path d="M8 21V11a1.7 1.7 0 0 1 3.4 0v4.2V7.5a1.7 1.7 0 0 1 3.4 0v7.7V9.4a1.7 1.7 0 0 1 3.4 0v5.8l1-1a1.7 1.7 0 0 1 2.4 2.4l-3.5 3.5A4 4 0 0 1 15.3 22H12a4 4 0 0 1-4-4Z"/>',
     zoom: '<circle cx="10.5" cy="10.5" r="5.5"/><path d="m15 15 5 5M10.5 8v5M8 10.5h5"/>',
     trash: '<path d="M5 7h14M9 7V4h6v3M8 7l1 13h6l1-13M10 11v5M14 11v5"/>',
+    duplicate: '<rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/>',
+    path: '<circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18c6 0 3-12 10-12"/>',
     group: '<rect x="4" y="4" width="10" height="10" rx="1"/><rect x="10" y="10" width="10" height="10" rx="1"/>',
     ungroup: '<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h2M7 11v2" stroke-dasharray="2 2"/>',
     up: '<path d="m7 14 5-5 5 5"/>',
@@ -705,12 +708,11 @@ function renderProps() {
   const box = $('#props');
   const e = selected();
   if (!e) { box.innerHTML = '<div class="small">未選取任何元素。點畫布上的元素以編輯。</div>'; return; }
-  const opts = S.types.filter(t => t.shape === e.kind || (e.kind === 'rect' ? t.shape === 'rect' : t.shape === 'point'))
+  const opts = S.types.filter(t => t.shape === e.kind)
     .map(t => `<option value="${escapeHtml(t.name)}" ${t.name === e.type ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('');
   let html = `
     <div class="row"><label>ID</label><input type="text" id="pId" value="${escapeHtml(e.id)}"></div>
-    <div class="row"><label>類型</label><select id="pType">${opts}<option value="__free">（自訂…）</option></select></div>
-    <div class="row" id="pFreeRow" style="display:none"><label>自訂型</label><input type="text" id="pFree" value="${escapeHtml(e.type)}"></div>
+    <div class="row"><label>類型</label><select id="pType">${opts}</select></div>
     <div class="row"><label>描述</label><textarea id="pDescription" class="description-input" placeholder="留空時沿用類型描述">${escapeHtml(e.description || '')}</textarea></div>
     <div class="grid2">
       <div class="row"><label>x</label><input type="number" id="pX" step="${S.snap || 0.1}" value="${e.x}"></div>
@@ -725,17 +727,8 @@ function renderProps() {
   // 自訂屬性
   html += `<h3 style="margin:10px 0 6px;font-size:11px;color:var(--muted)">自訂屬性 props</h3><div class="props" id="pProps"></div>
     <button id="pAddProp" style="width:100%;margin-top:4px">新增屬性</button>`;
-  // 連動
-  const linkOpts = S.els.filter(x => x.id !== e.id).map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.id)} (${escapeHtml(x.type)})</option>`).join('');
-  html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)" title="連動只是給遊戲邏輯讀取的資料參照（例如開關連門），不會讓元素一起選取或移動；要一起操作請用下方群組。">連動 links（targetId）</h3>
-    <div class="small" style="margin-bottom:6px">資料參照，不會一起移動；要一起操作請用群組。</div>
-    <div id="pLinks"></div>
-    <div class="row" style="margin-top:4px"><select id="pLinkSel" style="flex:1"><option value="">選目標…</option>${linkOpts}</select>
-    <button id="pAddLink">連</button></div>`;
   html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)">群組（編輯器排版）</h3>
     <div class="small" style="margin-bottom:6px">群組會一起選取、搬移、複製與刪除；可從左側工具箱建立或解散，不匯出給遊戲端。</div>`;
-  html += `<div class="row" style="margin-top:10px"><button class="danger" id="pDel" style="flex:1">刪除元素</button>
-    <button id="pDup" style="flex:1">複製</button></div>`;
   box.innerHTML = html;
 
   // props 列
@@ -750,28 +743,16 @@ function renderProps() {
   }
   $('#pAddProp').onclick = () => { pushUndo(); e.props = e.props || {}; let i = 1; while (e.props['key' + i] !== undefined) i++; e.props['key' + i] = ''; renderProps(); autosave(); };
 
-  // links 列
-  const pl = $('#pLinks');
-  for (const tid of (e.links || [])) {
-    const row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = `<span style="flex:1" class="small">連至 ${escapeHtml(tid)}</span><button data-x class="danger" title="移除連動" aria-label="移除連動">${icon('trash')}</button>`;
-    row.querySelector('[data-x]').onclick = () => { pushUndo(); e.links = e.links.filter(x => x !== tid); renderProps(); draw(); autosave(); };
-    pl.appendChild(row);
-  }
-  $('#pAddLink').onclick = () => { const v = $('#pLinkSel').value; if (!v) return; pushUndo(); e.links = e.links || []; if (!e.links.includes(v)) e.links.push(v); renderProps(); draw(); autosave(); };
   // 綁定基本欄位
   $('#pId').onchange = ev2 => { const nv = ev2.target.value.trim(); if (!nv || S.els.some(x => x !== e && x.id === nv)) { flashHint('ID 空白或重複'); renderProps(); return; } pushUndo(); const old = e.id; for (const x of S.els) if (x.links) x.links = x.links.map(id => id === old ? nv : id); e.id = nv; renderAll(); autosave(); };
   const typeSel = $('#pType');
   typeSel.onchange = ev2 => {
-    if (ev2.target.value === '__free') { $('#pFreeRow').style.display = ''; return; }
     if (!canUseType(ev2.target.value, e.id)) { flashHint(singletonLockedMessage(ev2.target.value)); renderProps(); return; }
     pushUndo(); e.type = ev2.target.value; renderAll(); autosave();
   };
-  $('#pFree').onchange = ev2 => { const nv = ev2.target.value.trim(); if (nv) { if (!canUseType(nv, e.id)) { flashHint(singletonLockedMessage(nv)); renderProps(); return; } pushUndo(); e.type = nv; renderAll(); autosave(); } };
   $('#pDescription').onchange = ev2 => { pushUndo(); e.description = ev2.target.value.trim(); autosave(); };
   const bindNum = (id, key) => { const el = $(id); if (!el) return; el.onchange = ev2 => { pushUndo(); e[key] = round4(parseFloat(ev2.target.value) || 0); renderAll(); autosave(); }; };
   bindNum('#pX', 'x'); bindNum('#pY', 'y'); bindNum('#pW', 'w'); bindNum('#pH', 'h');
-  $('#pDel').onclick = deleteSel; $('#pDup').onclick = duplicateSel;
   installNumberSteppers(box);
 }
 
@@ -863,30 +844,88 @@ document.addEventListener('mousedown', ev => { if (!ev.target.closest('.bottom-t
 //  類型對話框
 // =====================================================================
 let editingType = null;
+const TYPE_SHAPE_OPTIONS = [
+  { value: 'rect', label: '矩形 rect', iconName: 'rect' },
+  { value: 'point', label: '點 point', iconName: 'point' },
+];
+
+function renderTypeShapePicker() {
+  const current = TYPE_SHAPE_OPTIONS.find(option => option.value === $('#tdShape').value) || TYPE_SHAPE_OPTIONS[0];
+  $('#tdShapeTrigger').innerHTML = `<span>${icon(current.iconName, 'toolbar-item-icon')} ${current.label}</span><span>⌄</span>`;
+  $('#tdShapeMenu').innerHTML = TYPE_SHAPE_OPTIONS.map(option => `<button type="button" class="toolbar-item ${option.value === current.value ? 'on' : ''}" data-shape="${option.value}">${icon(option.iconName, 'toolbar-item-icon')}<span class="nm">${option.label}</span></button>`).join('');
+  $('#tdShapeMenu').querySelectorAll('[data-shape]').forEach(button => {
+    button.onclick = () => { $('#tdShape').value = button.dataset.shape; $('#tdShapeMenu').classList.remove('open'); renderTypeShapePicker(); };
+  });
+}
+
 function openTypeDlg(t) {
   editingType = t; // null = 新增
   $('#tdName').value = t ? t.name : '';
   $('#tdColor').value = t ? t.color : '#4fd1c5';
   $('#tdShape').value = t ? t.shape : 'rect';
+  $('#tdMovable').checked = Boolean(t?.movable);
+  renderTypeShapePicker();
   $('#tdDescription').value = t ? (t.description || '') : '';
   $('#tdDelete').style.display = t ? '' : 'none';
   $('#typeDlg').showModal();
 }
+
+function renderLinkDlg() {
+  const e = selected();
+  if (!e) { $('#linkDlg').close(); return; }
+  $('#linkDlgTitle').textContent = `元素連動：${e.id}`;
+  const links = $('#tbLinks');
+  links.innerHTML = '';
+  for (const targetId of (e.links || [])) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<span style="flex:1" class="small">連至 ${escapeHtml(targetId)}</span><button type="button" data-x class="danger" title="移除連動" aria-label="移除連動">${icon('trash')}</button>`;
+    row.querySelector('[data-x]').onclick = () => { pushUndo(); e.links = e.links.filter(id => id !== targetId); renderLinkDlg(); draw(); autosave(); };
+    links.appendChild(row);
+  }
+  const targetSelect = $('#tbLinkSel');
+  targetSelect.innerHTML = `<option value="">選目標…</option>${S.els.filter(item => item.id !== e.id && !(e.links || []).includes(item.id)).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} (${escapeHtml(item.type)})</option>`).join('')}`;
+}
+
+function openLinkDlg() {
+  if (!selected()) return;
+  renderLinkDlg();
+  $('#linkDlg').showModal();
+}
+
 function renderToolbox() {
   const e = selected();
   const canCreateGroup = selectionIds().length >= 2 && !selectionIds().some(id => groupForElement(id));
-  $('#tbEditPath').disabled = !e;
-  $('#tbGroup').disabled = !canCreateGroup;
-  $('#tbUngroup').disabled = !groupForSelection();
+  const canEditPath = Boolean(e && typeDef(e.type)?.movable);
+  const actions = $('#toolboxActions');
+  actions.innerHTML = '';
+  const addAction = (id, label, iconName, handler, className = '') => {
+    const button = document.createElement('button'); button.type = 'button'; button.id = id; button.className = className;
+    button.innerHTML = `${icon(iconName)}${label}`; button.onclick = handler; actions.appendChild(button);
+  };
+  if (canEditPath) addAction('tbEditPath', '編輯路徑', 'path', () => { pathEditingId = e.id; S.tool = 'path'; flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); });
+  if (canCreateGroup) addAction('tbGroup', '建立群組', 'group', createGroup);
+  else if (groupForSelection()) addAction('tbUngroup', '解散群組', 'ungroup', ungroupSelection);
+  if (e) {
+    addAction('tbLinksAction', '連動', 'link', openLinkDlg);
+    const pair = document.createElement('div'); pair.className = 'toolbox-pair';
+    pair.innerHTML = `<button type="button" class="danger" id="tbDel">${icon('trash')}刪除</button><button type="button" id="tbDup">${icon('duplicate')}複製</button>`;
+    pair.querySelector('#tbDel').onclick = deleteSel; pair.querySelector('#tbDup').onclick = duplicateSel; actions.appendChild(pair);
+  }
   $('#tbPathInfo').textContent = !e ? '' : e.path?.length
     ? `有 ${e.path.length} 個節點。路徑模式：點擊新增、拖曳調整、右鍵刪除。`
     : '尚無路徑；按「編輯路徑」後點畫布新增節點。';
 }
 $('#tbAddType').onclick = () => openTypeDlg(null);
-$('#tbEditPath').onclick = () => { const e = selected(); if (!e) { renderToolbox(); return; } pathEditingId = e.id; S.tool = 'path'; flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); };
-$('#tbGroup').onclick = createGroup;
-$('#tbUngroup').onclick = ungroupSelection;
+$('#tdShapeTrigger').onclick = () => $('#tdShapeMenu').classList.toggle('open');
 $('#tdCancel').onclick = () => $('#typeDlg').close();
+$('#tbLinkClose').onclick = () => $('#linkDlg').close();
+$('#tbAddLink').onclick = () => {
+  const e = selected(), targetId = $('#tbLinkSel').value;
+  if (!e || !targetId) return;
+  pushUndo(); e.links = e.links || [];
+  if (!e.links.includes(targetId)) e.links.push(targetId);
+  renderLinkDlg(); draw(); autosave();
+};
 $('#tdDelete').onclick = () => {
   if (!editingType) return;
   if (S.els.some(e => e.type === editingType.name)) { if (!confirm('有元素仍在用此類型，刪除後它們會保留原 type 字串但失去顏色。確定？')) return; }
@@ -897,14 +936,14 @@ $('#tdDelete').onclick = () => {
 $('#tdSave').onclick = () => {
   const name = $('#tdName').value.trim();
   if (!name) { alert('名稱不可空白'); return; }
-  const color = $('#tdColor').value, shape = $('#tdShape').value, description = $('#tdDescription').value.trim();
+  const color = $('#tdColor').value, shape = $('#tdShape').value, movable = $('#tdMovable').checked, description = $('#tdDescription').value.trim();
   pushUndo();
   if (editingType) {
     if (name !== editingType.name && S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    editingType.name = name; editingType.color = color; editingType.shape = shape; editingType.description = description;
+    editingType.name = name; editingType.color = color; editingType.shape = shape; editingType.movable = movable; editingType.description = description;
   } else {
     if (S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    S.types.push({ name, color, shape, description });
+    S.types.push({ name, color, shape, movable, description });
     S.activeType = name;
   }
   $('#typeDlg').close(); renderAll(); autosave();
@@ -924,6 +963,7 @@ function serialize(includeEditorState = false) {
     spawnUnit: spawn ? { x: spawn.x, y: spawn.y } : null,
     types: S.types.map(t => {
       const o = { name: t.name, color: t.color, shape: t.shape };
+      if (t.movable) o.movable = true;
       if (t.description) o.description = t.description;
       return o;
     }),
@@ -947,7 +987,7 @@ function deserialize(d) {
   S.name = d.name || 'level';
   S.world = { w: d.world?.wUnit ?? 80, h: d.world?.hUnit ?? 20 };
   S.snap = d.snap ?? 0.5;
-  if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect', description: t.description || '' }));
+  if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect', movable: Boolean(t.movable), description: t.description || '' }));
   S.els = (d.elements || []).map(e => ({
     id: e.id, kind: e.kind || (e.wUnit != null ? 'rect' : 'point'), type: e.type || 'unknown',
     x: e.xUnit ?? 0, y: e.yUnit ?? 0,
