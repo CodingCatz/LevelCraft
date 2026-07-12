@@ -3,6 +3,11 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.8.1] - 2026-07-12
+
+### Fixed
+- 畫布容器與側欄改為可安全縮放的 grid 子項目，並以 `ResizeObserver` 追蹤容器重排；視窗縮放、版面 reflow 後會在下一個畫面幀重新計算 canvas，避免畫布尺寸與可視區脫鉤而壓縮或遺失底部工具列。
+
 ## [0.8.0] - 2026-07-12
 
 ### Changed
@@ -97,6 +102,7 @@
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
 [0.8.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.0
+[0.8.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.1
 [0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
 [0.7.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.7.0
 [0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0

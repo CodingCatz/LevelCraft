@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.7.0';
+const VERSION = '0.8.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -112,6 +112,7 @@ function normalizeSingletonNodes() {
 // =====================================================================
 //  繪製
 // =====================================================================
+let resizeFrame = 0;
 function resizeCanvas() {
   const r = cw.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
@@ -119,6 +120,14 @@ function resizeCanvas() {
   cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   draw();
+}
+
+function scheduleCanvasResize() {
+  if (resizeFrame) return;
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = 0;
+    resizeCanvas();
+  });
 }
 
 function draw() {
@@ -987,5 +996,6 @@ function boot() {
   const animatePaths = time => { pathDashOffset = time / 45; if (pathTarget()?.path?.length) draw(); requestAnimationFrame(animatePaths); };
   requestAnimationFrame(animatePaths);
 }
-window.addEventListener('resize', resizeCanvas);
+window.addEventListener('resize', scheduleCanvasResize);
+new ResizeObserver(scheduleCanvasResize).observe(cw);
 boot();
