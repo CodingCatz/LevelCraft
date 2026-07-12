@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.9.1';
+const VERSION = '0.10.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -143,20 +143,8 @@ function draw() {
   for (const e of S.els) if (e.kind === 'rect') drawRect(e);
   for (const e of S.els) if (e.kind === 'point') drawPoint(e);
   drawLinks();
-  drawGroups();
   drawSelection();
   drawMarquee();
-}
-
-function drawGroups() {
-  ctx.save();
-  ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 2; ctx.setLineDash([]);
-  for (const group of S.groups) {
-    const bounds = groupBounds(group); if (!bounds) continue;
-    const a = toScreen(bounds.left, bounds.top), b = toScreen(bounds.right, bounds.bottom);
-    ctx.strokeRect(a.x - 6, a.y - 6, Math.max(12, b.x - a.x + 12), Math.max(12, b.y - a.y + 12));
-  }
-  ctx.restore();
 }
 
 function drawGrid(r) {
@@ -195,7 +183,7 @@ function drawRect(e) {
   const col = typeColor(e.type);
   ctx.fillStyle = hexA(col, 0.42);
   ctx.fillRect(a.x, a.y, w, h);
-  ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+  ctx.strokeStyle = isInHighlightedGroup(e.id) ? '#4fd1c5' : col; ctx.lineWidth = 1.5;
   ctx.strokeRect(a.x + 0.5, a.y + 0.5, w - 1, h - 1);
   if (w > 40 && h > 16) {
     ctx.fillStyle = '#e7eaf3'; ctx.font = '11px ui-sans-serif, sans-serif';
@@ -209,7 +197,7 @@ function drawPoint(e) {
   const rad = Math.max(6, Math.min(14, 0.45 * scale()));
   ctx.beginPath(); ctx.arc(a.x, a.y, rad, 0, Math.PI * 2);
   ctx.fillStyle = hexA(col, 0.85); ctx.fill();
-  ctx.strokeStyle = '#0d0f14'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = isInHighlightedGroup(e.id) ? '#4fd1c5' : '#0d0f14'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = '#cdd3e2'; ctx.font = '11px ui-sans-serif, sans-serif';
   ctx.fillText(`${e.type}`, a.x + rad + 3, a.y + 4);
 }
@@ -326,6 +314,9 @@ function groupForSelection(ids = selectionIds()) {
   const group = ids.length ? groupForElement(ids[0]) : null;
   return group && ids.length === group.memberIds.length && ids.every(id => group.memberIds.includes(id)) ? group : null;
 }
+function isInHighlightedGroup(id) {
+  return selectionIds().some(selectedId => groupForElement(selectedId)?.memberIds.includes(id));
+}
 function expandGroupIds(ids) {
   const expanded = new Set(ids);
   for (const id of ids) for (const memberId of groupForElement(id)?.memberIds || []) expanded.add(memberId);
@@ -342,16 +333,6 @@ function newGroupId() {
   do { id = `group-${index++}`; } while (S.groups.some(group => group.id === id));
   return id;
 }
-function groupBounds(group) {
-  const members = group.memberIds.map(id => S.els.find(e => e.id === id)).filter(Boolean);
-  if (!members.length) return null;
-  const left = Math.min(...members.map(e => e.x));
-  const top = Math.min(...members.map(e => e.y));
-  const right = Math.max(...members.map(e => e.kind === 'rect' ? e.x + e.w : e.x));
-  const bottom = Math.max(...members.map(e => e.kind === 'rect' ? e.y + e.h : e.y));
-  return { left, top, right, bottom };
-}
-
 function marqueeSelection(a, b) {
   const left = Math.min(a.x, b.x), right = Math.max(a.x, b.x);
   const top = Math.min(a.y, b.y), bottom = Math.max(a.y, b.y);
@@ -450,7 +431,7 @@ cw.addEventListener('mousedown', ev => {
     pushUndo();
     if (index >= 0) drag = { mode: 'movePath', e: target, index };
     else { target.path = target.path || []; target.path.push({ x: round4(snapU(u.x)), y: round4(snapU(u.y)) }); drag = { mode: 'movePath', e: target, index: target.path.length - 1 }; }
-    draw(); return;
+    renderToolbox(); draw(); return;
   }
   const sel = selected();
   const h = hitHandle(sel, u.x, u.y);
@@ -751,12 +732,8 @@ function renderProps() {
     <div id="pLinks"></div>
     <div class="row" style="margin-top:4px"><select id="pLinkSel" style="flex:1"><option value="">選目標…</option>${linkOpts}</select>
     <button id="pAddLink">連</button></div>`;
-  const selectedGroup = groupForSelection();
-  const canCreateGroup = selectionIds().length >= 2 && !selectionIds().some(id => groupForElement(id));
   html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)">群組（編輯器排版）</h3>
-    <div class="small" style="margin-bottom:6px">群組會一起選取、搬移、複製與刪除；不匯出給遊戲端。</div>
-    <div class="row"><button id="pGroup" style="flex:1" ${canCreateGroup ? '' : 'disabled'}>${icon('group')}建立群組</button>
-    <button id="pUngroup" style="flex:1" ${selectedGroup ? '' : 'disabled'}>${icon('ungroup')}解散群組</button></div>`;
+    <div class="small" style="margin-bottom:6px">群組會一起選取、搬移、複製與刪除；可從左側工具箱建立或解散，不匯出給遊戲端。</div>`;
   html += `<div class="row" style="margin-top:10px"><button class="danger" id="pDel" style="flex:1">刪除元素</button>
     <button id="pDup" style="flex:1">複製</button></div>`;
   box.innerHTML = html;
@@ -782,9 +759,6 @@ function renderProps() {
     pl.appendChild(row);
   }
   $('#pAddLink').onclick = () => { const v = $('#pLinkSel').value; if (!v) return; pushUndo(); e.links = e.links || []; if (!e.links.includes(v)) e.links.push(v); renderProps(); draw(); autosave(); };
-  $('#pGroup').onclick = createGroup;
-  $('#pUngroup').onclick = ungroupSelection;
-
   // 綁定基本欄位
   $('#pId').onchange = ev2 => { const nv = ev2.target.value.trim(); if (!nv || S.els.some(x => x !== e && x.id === nv)) { flashHint('ID 空白或重複'); renderProps(); return; } pushUndo(); const old = e.id; for (const x of S.els) if (x.links) x.links = x.links.map(id => id === old ? nv : id); e.id = nv; renderAll(); autosave(); };
   const typeSel = $('#pType');
@@ -898,9 +872,20 @@ function openTypeDlg(t) {
   $('#tdDelete').style.display = t ? '' : 'none';
   $('#typeDlg').showModal();
 }
-function renderToolbox() { const e = selected(); $('#tbPathInfo').textContent = !e ? '請先選取元素，再開始建立或編輯路徑。' : e.path?.length ? `目前選取 ${e.id}，有 ${e.path.length} 個節點。路徑模式：點擊新增、拖曳調整、右鍵刪除。` : `目前選取 ${e.id}，尚無路徑；按「編輯路徑」後點畫布新增節點。`; }
+function renderToolbox() {
+  const e = selected();
+  const canCreateGroup = selectionIds().length >= 2 && !selectionIds().some(id => groupForElement(id));
+  $('#tbEditPath').disabled = !e;
+  $('#tbGroup').disabled = !canCreateGroup;
+  $('#tbUngroup').disabled = !groupForSelection();
+  $('#tbPathInfo').textContent = !e ? '' : e.path?.length
+    ? `有 ${e.path.length} 個節點。路徑模式：點擊新增、拖曳調整、右鍵刪除。`
+    : '尚無路徑；按「編輯路徑」後點畫布新增節點。';
+}
 $('#tbAddType').onclick = () => openTypeDlg(null);
 $('#tbEditPath').onclick = () => { const e = selected(); if (!e) { renderToolbox(); return; } pathEditingId = e.id; S.tool = 'path'; flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); };
+$('#tbGroup').onclick = createGroup;
+$('#tbUngroup').onclick = ungroupSelection;
 $('#tdCancel').onclick = () => $('#typeDlg').close();
 $('#tdDelete').onclick = () => {
   if (!editingType) return;
