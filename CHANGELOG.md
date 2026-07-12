@@ -3,6 +3,11 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.10.1] - 2026-07-12
+
+### Fixed
+- 框選變更選取集合時同步刷新工具箱，建立／解散群組按鈕會立即反映可操作狀態。
+
 ## [0.10.0] - 2026-07-12
 
 ### Changed

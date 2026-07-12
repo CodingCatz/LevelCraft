@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.10.0';
+const VERSION = '0.10.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -545,7 +545,7 @@ window.addEventListener('mousemove', ev => {
   if (drag.mode === 'marquee') {
     drag.end = u;
     selectIds(marqueeSelection(drag.start, drag.end));
-    renderProps(); renderList(); updateStatus(); draw(); return;
+    renderProps(); renderList(); renderToolbox(); updateStatus(); draw(); return;
   }
 });
 
