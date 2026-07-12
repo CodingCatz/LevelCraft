@@ -127,7 +127,14 @@
     <div class="row"><label>高 H</label><input type="number" id="worldH" value="20" step="1" min="1"></div>
     <div class="row"><label>吸附</label><input type="number" id="snap" value="0.5" step="0.05" min="0"></div>
     <div class="row"><label>px/單位</label><input type="number" id="ppu" value="20" step="1" min="1" title="僅螢幕顯示比例，不寫入輸出"></div>
-    <button id="btnToolbox" style="width:100%">工具箱</button>
+  </div>
+  <div class="sec">
+    <h3>工具箱</h3>
+    <div class="toolbox-actions">
+      <button type="button" id="tbEditPath"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18c6 0 3-12 10-12"/></svg>編輯路徑</button>
+      <button type="button" id="tbAddType"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>新增類型</button>
+    </div>
+    <div id="tbPathInfo" class="small"></div>
   </div>
 </aside>
 
@@ -179,18 +186,6 @@
       <button type="button" class="pri" id="tdSave">儲存</button>
     </div>
   </form>
-</dialog>
-
-<dialog id="toolboxDlg">
-  <div class="dh">工具箱</div>
-  <div class="db">
-    <div class="toolbox-actions">
-      <button type="button" id="tbEditPath"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18c6 0 3-12 10-12"/></svg>編輯路徑</button>
-      <button type="button" id="tbAddType"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>新增類型</button>
-    </div>
-    <div id="tbPathInfo" class="small"></div>
-    <div class="df" style="border:0;padding:12px 0 0"><span style="flex:1"></span><button type="button" id="tbClose">關閉</button></div>
-  </div>
 </dialog>
 
 <!-- 多選刪除確認對話框 -->

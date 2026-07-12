@@ -600,7 +600,7 @@ function duplicateSel() {
 // =====================================================================
 //  UI 渲染
 // =====================================================================
-function renderAll() { renderToolbar(); renderProps(); renderList(); updateStatus(); draw(); }
+function renderAll() { renderToolbar(); renderProps(); renderList(); renderToolbox(); updateStatus(); draw(); }
 
 function typeCategory(t) {
   if (t.shape === 'rect') return 'rect';
@@ -815,10 +815,8 @@ function openTypeDlg(t) {
   $('#typeDlg').showModal();
 }
 function renderToolbox() { const e = selected(); $('#tbPathInfo').textContent = !e ? '請先選取元素，再開始建立或編輯路徑。' : e.path?.length ? `目前選取 ${e.id}，有 ${e.path.length} 個節點。路徑模式：點擊新增、拖曳調整、右鍵刪除。` : `目前選取 ${e.id}，尚無路徑；按「編輯路徑」後點畫布新增節點。`; }
-$('#btnToolbox').onclick = () => { renderToolbox(); $('#toolboxDlg').showModal(); };
-$('#tbClose').onclick = () => $('#toolboxDlg').close();
-$('#tbAddType').onclick = () => { $('#toolboxDlg').close(); openTypeDlg(null); };
-$('#tbEditPath').onclick = () => { const e = selected(); if (!e) { renderToolbox(); return; } pathEditingId = e.id; S.tool = 'path'; $('#toolboxDlg').close(); flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); };
+$('#tbAddType').onclick = () => openTypeDlg(null);
+$('#tbEditPath').onclick = () => { const e = selected(); if (!e) { renderToolbox(); return; } pathEditingId = e.id; S.tool = 'path'; flashHint('路徑模式：點擊新增、拖曳調整、右鍵刪除節點'); draw(); };
 $('#tdCancel').onclick = () => $('#typeDlg').close();
 $('#tdDelete').onclick = () => {
   if (!editingType) return;

@@ -3,6 +3,12 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.8.0] - 2026-07-12
+
+### Changed
+- 左側工具箱改為世界設定下方的常駐標題區塊，直接提供新增類型與路徑編輯操作；不再使用工具箱彈出視窗。
+- 路徑資訊會隨目前選取元素即時更新。
+
 ## [0.7.0] - 2026-07-12
 
 ### Added
@@ -90,6 +96,7 @@
 - 遊戲端消費範例 `examples/adapter.ts`（一張 CATEGORY 對照表換遊戲）。
 
 [0.1.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.1.0
+[0.8.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.8.0
 [0.6.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.6.0
 [0.7.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.7.0
 [0.5.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.5.0
