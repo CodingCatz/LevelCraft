@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.9.0';
+const VERSION = '0.9.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -746,7 +746,8 @@ function renderProps() {
     <button id="pAddProp" style="width:100%;margin-top:4px">新增屬性</button>`;
   // 連動
   const linkOpts = S.els.filter(x => x.id !== e.id).map(x => `<option value="${escapeHtml(x.id)}">${escapeHtml(x.id)} (${escapeHtml(x.type)})</option>`).join('');
-  html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)">連動 links（targetId）</h3>
+  html += `<h3 style="margin:12px 0 6px;font-size:11px;color:var(--muted)" title="連動只是給遊戲邏輯讀取的資料參照（例如開關連門），不會讓元素一起選取或移動；要一起操作請用下方群組。">連動 links（targetId）</h3>
+    <div class="small" style="margin-bottom:6px">資料參照，不會一起移動；要一起操作請用群組。</div>
     <div id="pLinks"></div>
     <div class="row" style="margin-top:4px"><select id="pLinkSel" style="flex:1"><option value="">選目標…</option>${linkOpts}</select>
     <button id="pAddLink">連</button></div>`;

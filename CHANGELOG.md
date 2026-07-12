@@ -3,6 +3,11 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.9.1] - 2026-07-12
+
+### Changed
+- 屬性面板明示 links/targetId 是供遊戲邏輯讀取的資料參照，不會帶動選取或搬移；以細橘色虛線與單向箭頭區隔群組的青色實線外框。
+
 ## [0.9.0] - 2026-07-12
 
 ### Added
