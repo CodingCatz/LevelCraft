@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.11.1';
+const VERSION = '0.14.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -92,6 +92,7 @@ const icon = (name, className = '') => {
 
 // ---------- 座標轉換 ----------
 const scale = () => S.ppu * S.view.zoom;
+function clampZoom(z) { return Math.min(8, Math.max(0.15, z)); }
 function toScreen(ux, uy) { return { x: ux * scale() + S.view.x, y: uy * scale() + S.view.y }; }
 function toUnit(sx, sy) { return { x: (sx - S.view.x) / scale(), y: (sy - S.view.y) / scale() }; }
 function snapU(v) { return S.snap > 0 ? Math.round(v / S.snap) * S.snap : v; }
@@ -568,7 +569,7 @@ cw.addEventListener('wheel', ev => {
   const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
   const before = toUnit(sx, sy);
   const factor = ev.deltaY < 0 ? 1.1 : 1 / 1.1;
-  S.view.zoom = Math.min(8, Math.max(0.15, S.view.zoom * factor));
+  S.view.zoom = clampZoom(S.view.zoom * factor);
   const after = toUnit(sx, sy);
   S.view.x += (after.x - before.x) * scale();
   S.view.y += (after.y - before.y) * scale();
@@ -805,6 +806,20 @@ function focusOn(e) {
   S.view.y = r.height / 2 - c.y * scale();
 }
 
+// 把整個世界框進畫面並置中。匯入時必呼叫：否則新關卡是套用在舊視角上，
+// 只要使用者先平移／縮放過，關卡就落在畫面外，看起來像「按了沒反應」。
+function fitViewToWorld() {
+  const r = cw.getBoundingClientRect();
+  const pad = 40;
+  S.view.zoom = clampZoom(Math.min(
+    (r.width - pad * 2) / (S.world.w * S.ppu),
+    (r.height - pad * 2) / (S.world.h * S.ppu),
+  ));
+  const s = scale();
+  S.view.x = (r.width - S.world.w * s) / 2;
+  S.view.y = (r.height - S.world.h * s) / 2;
+}
+
 function updateStatus() {
   const e = selected();
   $('#stSel').textContent = e ? `${e.id}` : '—';
@@ -983,9 +998,13 @@ function serialize(includeEditorState = false) {
 }
 
 function deserialize(d) {
-  if (!d || typeof d !== 'object') throw new Error('不是有效的 JSON 物件');
+  if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('不是有效的 JSON 物件');
+  if (d.format && d.format !== FORMAT) throw new Error(`不支援的格式 ${d.format}（預期 ${FORMAT}）`);
+  if (!d.world && !Array.isArray(d.elements)) throw new Error(`不像 ${FORMAT} 關卡：缺少 world 與 elements`);
   S.name = d.name || 'level';
-  S.world = { w: d.world?.wUnit ?? 80, h: d.world?.hUnit ?? 20 };
+  // 世界尺寸一律收斂成正有限數；壞值會讓縮放算出 NaN 而畫面全白。
+  const posNum = (v, fallback) => (Number.isFinite(+v) && +v > 0 ? +v : fallback);
+  S.world = { w: posNum(d.world?.wUnit, 80), h: posNum(d.world?.hUnit, 20) };
   S.snap = d.snap ?? 0.5;
   if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect', movable: Boolean(t.movable), description: t.description || '' }));
   S.els = (d.elements || []).map(e => ({
@@ -1011,12 +1030,14 @@ $('#btnExport').onclick = () => {
   const json = JSON.stringify(serialize(), null, 2);
   openIO('匯出 JSON', json, false);
 };
-$('#btnImport').onclick = () => openIO('匯入 JSON（貼上後按載入）', '', true);
+$('#btnImport').onclick = () => openIO('匯入 JSON', '', true);
 
 function openIO(title, text, isImport) {
   $('#ioTitle').textContent = title;
   $('#ioText').value = text;
   $('#ioText').readOnly = false;
+  $('#ioFileRow').style.display = isImport ? '' : 'none';
+  $('#ioFile').value = '';
   $('#ioLoad').style.display = isImport ? '' : 'none';
   $('#ioCopy').style.display = isImport ? 'none' : '';
   $('#ioDownload').style.display = isImport ? 'none' : '';
@@ -1029,12 +1050,30 @@ $('#ioDownload').onclick = () => {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = (S.name || 'level') + '.json'; a.click(); URL.revokeObjectURL(a.href);
 };
+// 選檔與貼上共用的唯一載入管線：解析 → 套用 → 框住關卡 → 明確回饋。
+// 失敗一律 throw，由呼叫端顯示；不吞錯，避免「按了沒反應」。
+function loadLevelFromText(text) {
+  const raw = (text || '').trim();
+  if (!raw) throw new Error('內容是空的');
+  let d;
+  try { d = JSON.parse(raw); } catch (err) { throw new Error('不是合法的 JSON（' + err.message + '）'); }
+  pushUndo();
+  deserialize(d);
+  fitViewToWorld();
+  syncInputs(); renderAll(); autosave();
+  flashHint(`已匯入 ${S.name}（${S.els.length} 個元素）`);
+}
+
 $('#ioLoad').onclick = () => {
-  try {
-    const d = JSON.parse($('#ioText').value);
-    pushUndo(); deserialize(d); syncInputs(); renderAll(); autosave();
-    $('#ioDlg').close();
-  } catch (err) { alert('解析失敗：' + err.message); }
+  try { loadLevelFromText($('#ioText').value); $('#ioDlg').close(); }
+  catch (err) { alert('匯入失敗：' + err.message); }
+};
+$('#ioFile').onchange = async ev => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  try { loadLevelFromText(await file.text()); $('#ioDlg').close(); }
+  catch (err) { alert(`匯入失敗（${file.name}）：${err.message}`); }
+  finally { ev.target.value = ''; } // 清掉才能重選同一個檔
 };
 
 // =====================================================================
