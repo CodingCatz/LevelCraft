@@ -66,12 +66,18 @@ node examples/celeste-import/intermediate_to_levelcraft.cjs \
   --in examples/celeste-import/fixtures \
   --out examples/celeste-import/out
 
-# 1) 本機正版 .bin → intermediate（gitignore）
+# 1a) 抽樣（快速驗管線）
 python examples/celeste-import/bin_to_intermediate.py \
   --maps "S:/Steam/steamapps/common/Celeste/Content/Maps" \
   --out examples/celeste-import/data/intermediate \
   --maps-filter 0-Intro,1-ForsakenCity \
   --rooms-per-map 12
+
+# 1b) 全量（27 個 .bin、每 map 全部 room；--rooms-per-map 0 = 不截斷）
+python examples/celeste-import/bin_to_intermediate.py \
+  --maps "S:/Steam/steamapps/common/Celeste/Content/Maps" \
+  --out examples/celeste-import/data/intermediate \
+  --rooms-per-map 0
 
 # 2) intermediate → levelcraft/v1（gitignore）
 node examples/celeste-import/intermediate_to_levelcraft.cjs \
@@ -79,7 +85,9 @@ node examples/celeste-import/intermediate_to_levelcraft.cjs \
   --out examples/celeste-import/data/levelcraft
 ```
 
-然後用 LevelCraft 開 `index.html` → 匯入 `data/levelcraft/*.json`（或合成 `out/*.json`）。
+然後用 LevelCraft 開 `index.html` → 選檔匯入 `data/levelcraft/*.json`（或合成 `out/*.json`）。
+
+**本機全量結果（2026-07-17）**：27 maps → **824** intermediate / levelcraft room（僅 `data/`，gitignore）。
 
 **建議人工驗收 3 room（真實抽取）**：
 
