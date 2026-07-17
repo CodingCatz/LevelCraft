@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.13.0] - 2026-07-17
+
+### Added
+- `examples/celeste-import/bin_to_intermediate.py`：本機正版 `Content/Maps/*.bin` BinaryPacker 解析 → intermediate room JSON（對齊 Celestial `celeste_map.rb` 讀取路徑；輸出僅寫入 gitignored `data/`）。
+
+### Fixed
+- `intermediate_to_levelcraft.cjs`：略過 `_*.json` 索引與無 solids 的 payload，避免 `_index.json` 覆寫有效輸出為空 elements。
+
+### Changed
+- `examples/celeste-import/README.md`：文件化 `CELESTE_ROOT` + 兩段 CLI（bin→intermediate→levelcraft/v1）。
+
 ## [0.12.0] - 2026-07-17
 
 ### Added
@@ -163,3 +174,4 @@
 [0.11.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.0
 [0.11.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.1
 [0.12.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.12.0
+[0.13.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.13.0

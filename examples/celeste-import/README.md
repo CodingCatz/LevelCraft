@@ -10,19 +10,21 @@
 
 | 路徑 | 說明 |
 |------|------|
+| `bin_to_intermediate.py` | 本機 `Content/Maps/*.bin` → intermediate room JSON（BinaryPacker；零第三方套件） |
 | `intermediate_to_levelcraft.cjs` | intermediate JSON → `levelcraft/v1`（零依賴 Node） |
 | `fixtures/synthetic-*.json` | **手製**合成 intermediate（非官方），用來驗管線 |
-| `out/` | 轉檔輸出（預設 gitignore；合成示範可選 commit） |
-| `data/` | 放本機抽取的 intermediate／官方衍生（**必 gitignore**） |
+| `out/` | 合成轉檔示範輸出（可 commit） |
+| `data/` | 本機抽取 intermediate／levelcraft（**必 gitignore**） |
 
 ## 前置
 
 1. 本機安裝正版 Celeste。
-2. 用既有工具把 `.bin` 轉成 intermediate（**擇一**，不重寫 BinaryPacker）：
+2. **預設路徑（本機已驗證）**：`S:\Steam\steamapps\common\Celeste`
+3. Python 3 + Node（僅標準庫／內建模組）。
+4. 也可改用既有工具把 `.bin` 轉成 intermediate 後對齊 schema：
    - [Celestial](https://github.com/maddievision/Celestial) `map2json.rb`
    - [Maple](https://github.com/CelestialCartographers/Maple)（Julia）
    - Rust crate [`celeste`](https://docs.rs/celeste)
-3. 若匯出 JSON 欄位名與本 intermediate schema 不同，先用薄適配層對齊（見下方 schema）。
 
 環境變數（可選）：
 
@@ -59,18 +61,31 @@ CELESTE_MAPS=%CELESTE_ROOT%\Content\Maps
 ## 使用
 
 ```bash
-# 合成 fixture 驗管線（不需遊戲）
+# 0) 合成 fixture 驗管線（不需遊戲）
 node examples/celeste-import/intermediate_to_levelcraft.cjs \
   --in examples/celeste-import/fixtures \
   --out examples/celeste-import/out
 
-# 本機 intermediate（gitignore 目錄）
+# 1) 本機正版 .bin → intermediate（gitignore）
+python examples/celeste-import/bin_to_intermediate.py \
+  --maps "S:/Steam/steamapps/common/Celeste/Content/Maps" \
+  --out examples/celeste-import/data/intermediate \
+  --maps-filter 0-Intro,1-ForsakenCity \
+  --rooms-per-map 12
+
+# 2) intermediate → levelcraft/v1（gitignore）
 node examples/celeste-import/intermediate_to_levelcraft.cjs \
   --in examples/celeste-import/data/intermediate \
   --out examples/celeste-import/data/levelcraft
 ```
 
-然後用 LevelCraft 開 `index.html` → 匯入 `out/*.json`。
+然後用 LevelCraft 開 `index.html` → 匯入 `data/levelcraft/*.json`（或合成 `out/*.json`）。
+
+**建議人工驗收 3 room（真實抽取）**：
+
+- `data/levelcraft/celeste__0-Intro__lvl_0.json`
+- `data/levelcraft/celeste__1-ForsakenCity__lvl_1.json`
+- `data/levelcraft/celeste__1-ForsakenCity__lvl_2.json`
 
 ## 合規禁推
 

@@ -221,8 +221,18 @@ function collectInputs(inPath) {
   return fs
     .readdirSync(inPath)
     .filter((f) => f.endsWith(".json"))
+    // skip batch index / non-room sidecars (they have rooms[] metadata without solids)
+    .filter((f) => !f.startsWith("_"))
     .map((f) => path.join(inPath, f))
     .sort();
+}
+
+/** @param {any} room */
+function isRoomPayload(room) {
+  if (!room || typeof room !== "object") return false;
+  if (Array.isArray(room.solids)) return true;
+  if (Array.isArray(room.entities) && (room.sourceMap || room.sourceRoom)) return true;
+  return false;
 }
 
 function main() {
@@ -247,8 +257,15 @@ function main() {
   let n = 0;
   for (const file of files) {
     const raw = JSON.parse(fs.readFileSync(file, "utf8"));
-    const rooms = Array.isArray(raw) ? raw : raw.rooms ? raw.rooms : [raw];
+    let rooms;
+    if (Array.isArray(raw)) rooms = raw;
+    else if (Array.isArray(raw.rooms) && raw.rooms.some(isRoomPayload)) rooms = raw.rooms;
+    else rooms = [raw];
     for (const room of rooms) {
+      if (!isRoomPayload(room)) {
+        console.warn("skip non-room payload in", path.basename(file));
+        continue;
+      }
       const lv = convertRoom(room);
       const safe = lv.name.replace(/[^\w./-]+/g, "_").replace(/\//g, "__");
       const outFile = path.join(absOut, `${safe}.json`);
