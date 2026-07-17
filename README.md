@@ -106,7 +106,15 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 
 ### 從其他遊戲關卡匯入（實驗）
 
-Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線見 [`examples/celeste-import/`](examples/celeste-import/)（含合成 fixture 驗管線；**不**附官方資產）。管線輸出的 `.json` 用上面的「匯入 JSON」→「選擇檔案」直接開即可。
+Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線見 [`examples/celeste-import/`](examples/celeste-import/)（含合成 fixture 驗管線；**不**附官方資產）。管線輸出的 `.json` 用上面的「匯入 JSON」→「選擇檔案」直接開即可——要開的是 `data/levelcraft/` 底下的 `celeste__*.json`（已轉成 `levelcraft/v1`）；`data/intermediate/` 是管線中繼格式，開了會跳錯誤並提示正確路徑。
+
+## 自檢
+
+```bash
+node check-import.cjs
+```
+
+零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋。`examples/celeste-import/data/` 未抽取時該組自動略過。
 
 ## 版本
 

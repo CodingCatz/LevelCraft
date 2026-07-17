@@ -14,7 +14,8 @@
 | `intermediate_to_levelcraft.cjs` | intermediate JSON → `levelcraft/v1`（零依賴 Node） |
 | `fixtures/synthetic-*.json` | **手製**合成 intermediate（非官方），用來驗管線 |
 | `out/` | 合成轉檔示範輸出（可 commit） |
-| `data/` | 本機抽取 intermediate／levelcraft（**必 gitignore**） |
+| `data/intermediate/` | 本機抽取的中間檔（**必 gitignore**）。管線中繼格式，**不能**直接匯入編輯器 |
+| `data/levelcraft/` | 轉換後的 `levelcraft/v1` 關卡（**必 gitignore**）。**要匯入編輯器的是這裡的 `celeste__*.json`** |
 
 ## 前置
 

@@ -3,6 +3,15 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.14.1] - 2026-07-17
+
+### Fixed
+- 誤選抽取管線的**中間檔**（`data/intermediate/`）匯入時，錯誤訊息從只說「缺少 world 與 elements」改為指出這是中間檔（含來源房間名）並指路到 `data/levelcraft/` 的 `celeste__*.json` 或轉檔指令。中間檔與轉換後關卡同名、只差 `celeste__` 前綴又住在相鄰資料夾，選錯是常態；原訊息技術上正確但無法據以行動。`_index.json` 房間清單檔同樣會被認出（它排序在資料夾第一個，最容易誤選）。
+- 匯入失敗不再留下一筆什麼都還原不了的 undo：先前 `pushUndo()` 排在驗證之前，壞輸入被擋下後 undo 堆疊仍多一筆，害失敗後第一次 Ctrl+Z 沒有反應（0.14.0 引入）。
+
+### Added
+- `check-import.cjs`：零依賴自檢（`node check-import.cjs`），拿 `editor.js` 出貨中的分類函式跑 `examples/` 底下的真檔，確保中間檔一定被認出、真關卡一定不被誤擋。
+
 ## [0.14.0] - 2026-07-17
 
 ### Added

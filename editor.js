@@ -20,7 +20,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
 ];
 
-const VERSION = '0.14.0';
+const VERSION = '0.14.1';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -997,10 +997,37 @@ function serialize(includeEditorState = false) {
   return level;
 }
 
-function deserialize(d) {
+// 中間檔與轉換後關卡同名、只差 celeste__ 前綴且相鄰兩層資料夾，選錯檔是常態而非意外。
+// room 判準對齊 intermediate_to_levelcraft.cjs 的 isRoomPayload（該處為權威定義；瀏覽器端無法
+// require node 腳本故重述）。只用於指路，判錯的代價是錯誤訊息較籠統，不影響載入正確性。
+// 回傳中間檔型態，非中間檔回 null。
+function intermediateKind(d) {
+  if (Array.isArray(d.solids)) return 'room';
+  if (Array.isArray(d.entities) && (d.sourceMap || d.sourceRoom)) return 'room';
+  // _index.json 清單檔：排序在資料夾第一個，最容易被誤選。
+  if (Array.isArray(d.rooms) && d.rooms.length && d.rooms.every(r => r?.file)) return 'index';
+  return null;
+}
+
+// 守門檢查全在任何狀態變更之前跑完，呼叫端才能在 pushUndo 之前先擋掉壞輸入。
+function validateLevel(d) {
   if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('不是有效的 JSON 物件');
   if (d.format && d.format !== FORMAT) throw new Error(`不支援的格式 ${d.format}（預期 ${FORMAT}）`);
+  const kind = intermediateKind(d);
+  if (kind) {
+    const room = [d.sourceMap, d.sourceRoom].filter(Boolean).join('/');
+    const what = kind === 'index' ? '房間清單檔（_index.json）' : `中間檔${room ? `（${room}）` : ''}`;
+    throw new Error(
+      `這是抽取管線的${what}，不是 ${FORMAT} 關卡。\n` +
+      `請改開 examples/celeste-import/data/levelcraft/ 底下轉換後的 celeste__*.json，\n` +
+      `或先轉檔：node examples/celeste-import/intermediate_to_levelcraft.cjs --in <檔> --out <目錄>`
+    );
+  }
   if (!d.world && !Array.isArray(d.elements)) throw new Error(`不像 ${FORMAT} 關卡：缺少 world 與 elements`);
+}
+
+function deserialize(d) {
+  validateLevel(d);
   S.name = d.name || 'level';
   // 世界尺寸一律收斂成正有限數；壞值會讓縮放算出 NaN 而畫面全白。
   const posNum = (v, fallback) => (Number.isFinite(+v) && +v > 0 ? +v : fallback);
@@ -1057,6 +1084,7 @@ function loadLevelFromText(text) {
   if (!raw) throw new Error('內容是空的');
   let d;
   try { d = JSON.parse(raw); } catch (err) { throw new Error('不是合法的 JSON（' + err.message + '）'); }
+  validateLevel(d); // 先擋壞輸入，否則失敗的匯入會留下一筆還原不了東西的 undo。
   pushUndo();
   deserialize(d);
   fitViewToWorld();
