@@ -103,6 +103,10 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 示範把 `levelcraft/v1` 轉成一個平台遊戲的 `solids / objects / hazards` 結構——換遊戲只要改那張對照表。
 單位換像素就是 `xUnit * UNIT_PX`，`UNIT_PX` 由遊戲定義。
 
+### 從其他遊戲關卡匯入（實驗）
+
+Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線見 [`examples/celeste-import/`](examples/celeste-import/)（含合成 fixture 驗管線；**不**附官方資產）。
+
 ## 版本
 
 見 [CHANGELOG.md](CHANGELOG.md)。遵循 SemVer 2.0.0。

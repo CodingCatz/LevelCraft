@@ -1,0 +1,213 @@
+{
+  "format": "levelcraft/v1",
+  "name": "celeste/1-ForsakenCity/a-00",
+  "world": {
+    "wUnit": 24,
+    "hUnit": 14
+  },
+  "snap": 1,
+  "spawnUnit": {
+    "x": 4,
+    "y": 10
+  },
+  "types": [
+    {
+      "name": "ground",
+      "color": "#5568d3",
+      "shape": "rect",
+      "description": "可行走／實心地形（from Celeste solids）"
+    },
+    {
+      "name": "wall",
+      "color": "#3d4a9e",
+      "shape": "rect",
+      "description": "實心牆"
+    },
+    {
+      "name": "spike",
+      "color": "#e53e3e",
+      "shape": "rect",
+      "description": "尖刺"
+    },
+    {
+      "name": "oneway",
+      "color": "#9f7aea",
+      "shape": "rect",
+      "description": "單向平台"
+    },
+    {
+      "name": "spawn",
+      "color": "#48bb78",
+      "shape": "point",
+      "description": "出生點"
+    },
+    {
+      "name": "checkpoint",
+      "color": "#38b2ac",
+      "shape": "point"
+    },
+    {
+      "name": "goal",
+      "color": "#4fd1c5",
+      "shape": "point"
+    },
+    {
+      "name": "switch",
+      "color": "#ed8936",
+      "shape": "point"
+    },
+    {
+      "name": "door",
+      "color": "#d69e2e",
+      "shape": "point"
+    },
+    {
+      "name": "key",
+      "color": "#ecc94b",
+      "shape": "point"
+    },
+    {
+      "name": "strawberry",
+      "color": "#fc8181",
+      "shape": "point",
+      "description": "草莓（實驗）"
+    },
+    {
+      "name": "spring",
+      "color": "#63b3ed",
+      "shape": "point",
+      "description": "彈簧"
+    }
+  ],
+  "elements": [
+    {
+      "id": "ground-1",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 0,
+      "yUnit": 0,
+      "wUnit": 24,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "wall-2",
+      "kind": "rect",
+      "type": "wall",
+      "xUnit": 0,
+      "yUnit": 1,
+      "wUnit": 1,
+      "hUnit": 13,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "wall-3",
+      "kind": "rect",
+      "type": "wall",
+      "xUnit": 23,
+      "yUnit": 1,
+      "wUnit": 1,
+      "hUnit": 13,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-4",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 7,
+      "yUnit": 6,
+      "wUnit": 6,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-5",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 17,
+      "yUnit": 9,
+      "wUnit": 6,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-6",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 1,
+      "yUnit": 12,
+      "wUnit": 11,
+      "hUnit": 2,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-7",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 16,
+      "yUnit": 12,
+      "wUnit": 7,
+      "hUnit": 2,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-8",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 12,
+      "yUnit": 13,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "spring-9",
+      "kind": "point",
+      "type": "spring",
+      "xUnit": 12,
+      "yUnit": 11,
+      "props": {
+        "celesteEntityName": "spring"
+      }
+    },
+    {
+      "id": "strawberry-10",
+      "kind": "point",
+      "type": "strawberry",
+      "xUnit": 20,
+      "yUnit": 5,
+      "props": {
+        "celesteEntityName": "strawberry"
+      }
+    },
+    {
+      "id": "spike-11",
+      "kind": "rect",
+      "type": "spike",
+      "xUnit": 16,
+      "yUnit": 12,
+      "wUnit": 3,
+      "hUnit": 1,
+      "props": {
+        "celesteEntityName": "spikesUp"
+      }
+    }
+  ],
+  "description": "side=A; converted from Celeste-like intermediate; not an official redistribution"
+}

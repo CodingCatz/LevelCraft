@@ -1,0 +1,121 @@
+{
+  "format": "levelcraft/v1",
+  "name": "celeste/0-Intro/start",
+  "world": {
+    "wUnit": 20,
+    "hUnit": 12
+  },
+  "snap": 1,
+  "spawnUnit": {
+    "x": 3,
+    "y": 8
+  },
+  "types": [
+    {
+      "name": "ground",
+      "color": "#5568d3",
+      "shape": "rect",
+      "description": "可行走／實心地形（from Celeste solids）"
+    },
+    {
+      "name": "wall",
+      "color": "#3d4a9e",
+      "shape": "rect",
+      "description": "實心牆"
+    },
+    {
+      "name": "spike",
+      "color": "#e53e3e",
+      "shape": "rect",
+      "description": "尖刺"
+    },
+    {
+      "name": "oneway",
+      "color": "#9f7aea",
+      "shape": "rect",
+      "description": "單向平台"
+    },
+    {
+      "name": "spawn",
+      "color": "#48bb78",
+      "shape": "point",
+      "description": "出生點"
+    },
+    {
+      "name": "checkpoint",
+      "color": "#38b2ac",
+      "shape": "point"
+    },
+    {
+      "name": "goal",
+      "color": "#4fd1c5",
+      "shape": "point"
+    },
+    {
+      "name": "switch",
+      "color": "#ed8936",
+      "shape": "point"
+    },
+    {
+      "name": "door",
+      "color": "#d69e2e",
+      "shape": "point"
+    },
+    {
+      "name": "key",
+      "color": "#ecc94b",
+      "shape": "point"
+    },
+    {
+      "name": "strawberry",
+      "color": "#fc8181",
+      "shape": "point",
+      "description": "草莓（實驗）"
+    },
+    {
+      "name": "spring",
+      "color": "#63b3ed",
+      "shape": "point",
+      "description": "彈簧"
+    }
+  ],
+  "elements": [
+    {
+      "id": "ground-1",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 0,
+      "yUnit": 9,
+      "wUnit": 14,
+      "hUnit": 3,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-2",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 14,
+      "yUnit": 11,
+      "wUnit": 6,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "spike-3",
+      "kind": "rect",
+      "type": "spike",
+      "xUnit": 14,
+      "yUnit": 9,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "celesteEntityName": "spikesUp"
+      }
+    }
+  ],
+  "description": "side=A; converted from Celeste-like intermediate; not an official redistribution"
+}

@@ -1,0 +1,30 @@
+{
+  "sourceMap": "1-ForsakenCity",
+  "sourceRoom": "a-00",
+  "side": "A",
+  "widthTiles": 24,
+  "heightTiles": 14,
+  "solids": [
+    "XXXXXXXXXXXXXXXXXXXXXXXX",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "X000000XXXXXX0000000000X",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "X0000000000000000XXXXXXX",
+    "X0000000000000000000000X",
+    "X0000000000000000000000X",
+    "XXXXXXXXXXXX0000XXXXXXXX",
+    "XXXXXXXXXXXXXXXXXXXXXXXX"
+  ],
+  "entities": [
+    { "name": "player", "x": 32, "y": 80 },
+    { "name": "spring", "x": 96, "y": 88 },
+    { "name": "strawberry", "x": 160, "y": 40 },
+    { "name": "spikesUp", "x": 128, "y": 96, "width": 24, "height": 8 }
+  ],
+  "_note": "SYNTHETIC fixture for pipeline test — not official Celeste data"
+}

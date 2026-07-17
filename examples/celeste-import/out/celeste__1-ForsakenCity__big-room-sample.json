@@ -1,0 +1,297 @@
+{
+  "format": "levelcraft/v1",
+  "name": "celeste/1-ForsakenCity/big-room-sample",
+  "world": {
+    "wUnit": 40,
+    "hUnit": 22
+  },
+  "snap": 1,
+  "spawnUnit": {
+    "x": 5,
+    "y": 18
+  },
+  "types": [
+    {
+      "name": "ground",
+      "color": "#5568d3",
+      "shape": "rect",
+      "description": "可行走／實心地形（from Celeste solids）"
+    },
+    {
+      "name": "wall",
+      "color": "#3d4a9e",
+      "shape": "rect",
+      "description": "實心牆"
+    },
+    {
+      "name": "spike",
+      "color": "#e53e3e",
+      "shape": "rect",
+      "description": "尖刺"
+    },
+    {
+      "name": "oneway",
+      "color": "#9f7aea",
+      "shape": "rect",
+      "description": "單向平台"
+    },
+    {
+      "name": "spawn",
+      "color": "#48bb78",
+      "shape": "point",
+      "description": "出生點"
+    },
+    {
+      "name": "checkpoint",
+      "color": "#38b2ac",
+      "shape": "point"
+    },
+    {
+      "name": "goal",
+      "color": "#4fd1c5",
+      "shape": "point"
+    },
+    {
+      "name": "switch",
+      "color": "#ed8936",
+      "shape": "point"
+    },
+    {
+      "name": "door",
+      "color": "#d69e2e",
+      "shape": "point"
+    },
+    {
+      "name": "key",
+      "color": "#ecc94b",
+      "shape": "point"
+    },
+    {
+      "name": "strawberry",
+      "color": "#fc8181",
+      "shape": "point",
+      "description": "草莓（實驗）"
+    },
+    {
+      "name": "spring",
+      "color": "#63b3ed",
+      "shape": "point",
+      "description": "彈簧"
+    }
+  ],
+  "elements": [
+    {
+      "id": "ground-1",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 0,
+      "yUnit": 0,
+      "wUnit": 40,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "wall-2",
+      "kind": "rect",
+      "type": "wall",
+      "xUnit": 0,
+      "yUnit": 1,
+      "wUnit": 1,
+      "hUnit": 21,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "wall-3",
+      "kind": "rect",
+      "type": "wall",
+      "xUnit": 39,
+      "yUnit": 1,
+      "wUnit": 1,
+      "hUnit": 21,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-4",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 5,
+      "yUnit": 5,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-5",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 29,
+      "yUnit": 5,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-6",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 13,
+      "yUnit": 8,
+      "wUnit": 10,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-7",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 1,
+      "yUnit": 11,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-8",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 35,
+      "yUnit": 11,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-9",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 11,
+      "yUnit": 14,
+      "wUnit": 16,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-10",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 5,
+      "yUnit": 17,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-11",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 31,
+      "yUnit": 17,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-12",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 1,
+      "yUnit": 20,
+      "wUnit": 15,
+      "hUnit": 2,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-13",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 20,
+      "yUnit": 20,
+      "wUnit": 19,
+      "hUnit": 2,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "ground-14",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 16,
+      "yUnit": 21,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "source": "solids"
+      }
+    },
+    {
+      "id": "checkpoint-15",
+      "kind": "point",
+      "type": "checkpoint",
+      "xUnit": 20,
+      "yUnit": 12.5,
+      "props": {
+        "celesteEntityName": "checkpoint"
+      }
+    },
+    {
+      "id": "spike-16",
+      "kind": "rect",
+      "type": "spike",
+      "xUnit": 25,
+      "yUnit": 20,
+      "wUnit": 6,
+      "hUnit": 1,
+      "props": {
+        "celesteEntityName": "spikesUp"
+      }
+    },
+    {
+      "id": "spike-17",
+      "kind": "rect",
+      "type": "spike",
+      "xUnit": 10,
+      "yUnit": 20,
+      "wUnit": 4,
+      "hUnit": 1,
+      "props": {
+        "celesteEntityName": "spikesUp"
+      }
+    },
+    {
+      "id": "strawberry-18",
+      "kind": "point",
+      "type": "strawberry",
+      "xUnit": 35,
+      "yUnit": 6,
+      "props": {
+        "celesteEntityName": "strawberry"
+      }
+    }
+  ],
+  "description": "side=A; converted from Celeste-like intermediate; not an official redistribution"
+}

@@ -3,6 +3,11 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.12.0] - 2026-07-17
+
+### Added
+- `examples/celeste-import/`：Celeste intermediate → `levelcraft/v1` 轉接管線（`intermediate_to_levelcraft.cjs`、合成 fixture ×3、合規 README）。供本機正版 Maps 抽取後匯入實驗；**不含**官方 map 本體。
+
 ## [0.11.1] - 2026-07-13
 
 ### Fixed
@@ -157,3 +162,4 @@
 [0.10.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.10.1
 [0.11.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.0
 [0.11.1]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.11.1
+[0.12.0]: https://github.com/CodingCatz/LevelCraft/releases/tag/v0.12.0

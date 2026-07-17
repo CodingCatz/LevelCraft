@@ -3,3 +3,7 @@ Thumbs.db
 node_modules/
 *.log
 .claude/launch.json
+
+# Celeste import: never commit official map binaries / bulk dumps
+examples/celeste-import/data/
+*.bin
