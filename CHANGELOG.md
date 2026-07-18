@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.17.0] - 2026-07-18
+
+### Added
+- **官方 Unity 2D Tilemap 轉接器** [`adapters/unity/`](adapters/unity/)：Editor 選單匯入 `levelcraft/v1` → `Grid`/`Tilemap`/`TilemapCollider2D`+`CompositeCollider2D`（solid／hazard／decor 分層）；object／point 掛 `LevelCraftElement`（props／links 解析／path Y-up）；手寫極簡 JSON parser（不依第三方）。
+- 座標公式 Node 自檢 `adapters/unity/check-coords.cjs`；Unity EditMode 測試 `Tests/LevelCraftCoordTests.cs`。
+- 可選 `*.levelcraft` ScriptedImporter；主路徑為選單匯入（免改副檔名）。
+
+### Docs
+- `adapters/unity/README.md`：安裝、Tile Palette 續編、Y 軸換算、與 Phaser 對照。
+- 主 README 官方轉接器表加入 Unity 列。
+
 ## [0.16.0] - 2026-07-18
 
 ### Added

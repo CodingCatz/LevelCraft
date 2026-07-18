@@ -113,11 +113,17 @@ v0.15+ 類型可攜帶 `category` 語意，遊戲端優先讀 JSON 的 `types[].
 | 引擎 | 路徑 | 說明 |
 |------|------|------|
 | **Phaser 3** | [`adapters/phaser/`](adapters/phaser/) | 零依賴單檔 `loadLevelCraft(scene, json, { unitPx })` → Arcade StaticGroup / Zone；含 demo 與 Node 自檢 |
+| **Unity 2D** | [`adapters/unity/`](adapters/unity/) | C# 匯入器 → 官方 `Grid`/`Tilemap`/`TilemapCollider2D`+`Composite`；Y 軸翻轉與 category 分流；`LevelCraftElement` 掛 metadata |
 
 ```js
 import { loadLevelCraft } from './adapters/phaser/levelcraft-phaser.js';
 const level = loadLevelCraft(scene, json, { unitPx: 32 });
 // level.solids / level.hazards / level.objects / level.spawn
+```
+
+```
+// Unity：Assets → LevelCraft → Import Level JSON…
+// 複製 adapters/unity/ 進專案 Assets/ 即可（需 2D Tilemap）
 ```
 
 ### 從其他遊戲關卡匯入（實驗）

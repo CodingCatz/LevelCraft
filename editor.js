@@ -27,7 +27,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.16.0';
+const VERSION = '0.17.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
