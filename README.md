@@ -72,9 +72,10 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
   "world":  { "wUnit": 80, "hUnit": 20 },   // 世界大小（單位）
   "snap": 0.5,
   "spawnUnit": { "x": 3, "y": 15 },          // 出生點（單位，點；沒有出生點時為 null）
-  "types": [                                  // 類型定義（顏色/形狀/可選描述，供還原調色盤）
-    { "name": "ground", "color": "#5568d3", "shape": "rect", "description": "可行走的地面" },
-    { "name": "goal",   "color": "#4fd1c5", "shape": "point" }
+  "types": [                                  // 類型定義（顏色/幾何 shape/遊戲語意 category/可選描述）
+    { "name": "ground", "color": "#5568d3", "shape": "rect",  "category": "solid",  "description": "可行走的地面" },
+    { "name": "spike",  "color": "#fc8181", "shape": "rect",  "category": "hazard" },
+    { "name": "goal",   "color": "#4fd1c5", "shape": "point", "category": "object" }
   ],
   "elements": [
     // 矩形：帶 wUnit/hUnit，(xUnit,yUnit)=左上角
@@ -94,14 +95,17 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 
 `description` 為可選字串；留空時不輸出，舊版 JSON 也可直接匯入。元素描述留空時表示沿用其類型描述。
 
+`category` 是**遊戲語意**（`solid` 實心／`hazard` 危險／`object` 互動／`decor` 裝飾無碰撞），與幾何 `shape`（`rect`/`point`）獨立——例如 hazard 可以是尖刺帶（rect）也可以是點。新檔匯出時每個 type 都會帶 `category`；**舊檔缺欄位時匯入預設 `object`**（不猜 type 名、不讓匯入失敗）。遊戲端應優先讀 `types[].category`，見 [`examples/adapter.ts`](examples/adapter.ts)。
+
 ### 工具箱與路徑節點
 
 「新增類型」位於左欄的世界設定區塊且滿版對齊。工具箱採條件式操作：只有目前可執行的按鈕才會渲染。選取元素後會出現刪除、複製與連動入口；建立群組與解散群組互斥，且僅在選取狀態符合規則時出現。類型在「編輯類型」對話框可標記為「可移動路徑」；只有該類型的已選取元素才會出現「編輯路徑」。既有類型預設不可移動，需手動勾選後才會開啟路徑操作。路徑會用半透明節點與虛線顯示；非空 `path` 與 `movable: true` 類型設定都會隨 JSON 匯出，舊檔可直接匯入。
 
 ## 遊戲端怎麼吃
 
-編輯器輸出是中性的，語意由遊戲決定。範例轉接器見 [`examples/adapter.ts`](examples/adapter.ts)，
-示範把 `levelcraft/v1` 轉成一個平台遊戲的 `solids / objects / hazards` 結構——換遊戲只要改那張對照表。
+v0.15+ 類型可攜帶 `category` 語意，遊戲端優先讀 JSON 的 `types[].category`（SSOT 在編輯器）。
+舊檔仍可用 fallback 對照表。範例轉接器見 [`examples/adapter.ts`](examples/adapter.ts)，
+示範把 `levelcraft/v1` 轉成 `solids / objects / hazards`（`decor` 略過）。
 單位換像素就是 `xUnit * UNIT_PX`，`UNIT_PX` 由遊戲定義。
 
 ### 從其他遊戲關卡匯入（實驗）

@@ -187,6 +187,14 @@
         <input type="hidden" id="tdShape" value="rect">
         <div class="type-picker"><button type="button" class="type-picker-trigger" id="tdShapeTrigger"></button><div class="type-picker-menu" id="tdShapeMenu"></div></div>
       </div>
+      <div class="row"><label title="遊戲語意分類，與幾何 shape 獨立；隨 levelcraft/v1 匯出。hazard 可為 rect 或 point。">語意 category</label>
+        <select id="tdCategory">
+          <option value="solid">solid（實心地形）</option>
+          <option value="hazard">hazard（危險物）</option>
+          <option value="object">object（互動物件）</option>
+          <option value="decor">decor（裝飾，無碰撞）</option>
+        </select>
+      </div>
       <div class="row"><label>移動路徑</label><input type="checkbox" id="tdMovable" title="可使用工具箱的編輯路徑功能"></div>
       <div class="row"><label>描述</label><textarea id="tdDescription" class="description-input" placeholder="例：需要對應鑰匙才能開啟的門"></textarea></div>
     </div>

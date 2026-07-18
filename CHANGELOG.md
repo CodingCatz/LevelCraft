@@ -3,6 +3,20 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.15.0] - 2026-07-18
+
+### Added
+- **類型 `category` 語意欄位**（`solid`／`hazard`／`object`／`decor`）：在「編輯類型」對話框可選，隨 `levelcraft/v1` 的 `types[]` 匯出。內建類型帶預設（ground/oneway/wall/ladder→solid，spike→hazard，其餘 object）。`shape` 仍是幾何，與 category 獨立。
+- 新增自訂類型時 category 必選（UI 下拉，預設 `object`）。
+
+### Changed
+- 舊 JSON 缺 `category` 時匯入預設 `object`（向後相容、不報錯）。
+- `examples/adapter.ts` 優先讀 `types[].category`，找不到才 fallback 本機對照表；`decor` 不進 solids/hazards/objects。
+- README `levelcraft/v1` 格式文件同步 category 說明。
+
+### Docs
+- `check-import.cjs` 補 category 正規化／缺欄預設 object 自檢。
+
 ## [0.14.1] - 2026-07-17
 
 ### Fixed

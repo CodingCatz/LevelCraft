@@ -5,22 +5,29 @@
  */
 'use strict';
 
-// ---------- 預設類型（可自由增刪；只是標籤＋顏色＋形狀，語意由遊戲解讀）----------
+// ---------- 預設類型（標籤＋顏色＋幾何 shape＋遊戲語意 category）----------
+// category（solid/hazard/object/decor）是遊戲語意，與 shape（rect/point）獨立，隨 JSON 匯出。
+/** 舊檔／未知值 → object（向後相容，不讓匯入失敗）。合法集合內嵌，方便 check-import 抽出。 */
+function normalizeGameCategory(cat) {
+  const v = String(cat || '').toLowerCase();
+  return v === 'solid' || v === 'hazard' || v === 'object' || v === 'decor' ? v : 'object';
+}
+
 const DEFAULT_TYPES = [
-  { name: 'ground',  color: '#5568d3', shape: 'rect',  description: '' },
-  { name: 'oneway',  color: '#7c8cff', shape: 'rect',  description: '' },
-  { name: 'wall',    color: '#3f4a8a', shape: 'rect',  description: '' },
-  { name: 'spike',   color: '#fc8181', shape: 'rect',  description: '' },
-  { name: 'ladder',  color: '#68d391', shape: 'rect',  description: '' },
-  { name: 'spawn',   color: '#f6e05e', shape: 'point', description: '' },
-  { name: 'goal',    color: '#4fd1c5', shape: 'point', description: '' },
-  { name: 'key',     color: '#f6ad55', shape: 'point', description: '' },
-  { name: 'door',    color: '#b794f4', shape: 'point', description: '' },
-  { name: 'switch',  color: '#f687b3', shape: 'point', description: '' },
-  { name: 'checkpoint', color: '#63b3ed', shape: 'point', description: '' },
+  { name: 'ground',  color: '#5568d3', shape: 'rect',  category: 'solid',  description: '' },
+  { name: 'oneway',  color: '#7c8cff', shape: 'rect',  category: 'solid',  description: '' },
+  { name: 'wall',    color: '#3f4a8a', shape: 'rect',  category: 'solid',  description: '' },
+  { name: 'spike',   color: '#fc8181', shape: 'rect',  category: 'hazard', description: '' },
+  { name: 'ladder',  color: '#68d391', shape: 'rect',  category: 'solid',  description: '' },
+  { name: 'spawn',   color: '#f6e05e', shape: 'point', category: 'object', description: '' },
+  { name: 'goal',    color: '#4fd1c5', shape: 'point', category: 'object', description: '' },
+  { name: 'key',     color: '#f6ad55', shape: 'point', category: 'object', description: '' },
+  { name: 'door',    color: '#b794f4', shape: 'point', category: 'object', description: '' },
+  { name: 'switch',  color: '#f687b3', shape: 'point', category: 'object', description: '' },
+  { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.14.1';
+const VERSION = '0.15.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -662,6 +669,7 @@ function ungroupSelection() {
 // =====================================================================
 function renderAll() { renderToolbar(); renderProps(); renderList(); renderToolbox(); updateStatus(); draw(); }
 
+/** 工具列分組（rect/marker/node）— 編輯器 UI 用，不是遊戲語意 category */
 function typeCategory(t) {
   if (t.shape === 'rect') return 'rect';
   if (['switch', 'key', 'door'].includes(t.name)) return 'marker';
@@ -878,6 +886,7 @@ function openTypeDlg(t) {
   $('#tdName').value = t ? t.name : '';
   $('#tdColor').value = t ? t.color : '#4fd1c5';
   $('#tdShape').value = t ? t.shape : 'rect';
+  $('#tdCategory').value = t ? normalizeGameCategory(t.category) : 'object';
   $('#tdMovable').checked = Boolean(t?.movable);
   renderTypeShapePicker();
   $('#tdDescription').value = t ? (t.description || '') : '';
@@ -951,14 +960,23 @@ $('#tdDelete').onclick = () => {
 $('#tdSave').onclick = () => {
   const name = $('#tdName').value.trim();
   if (!name) { alert('名稱不可空白'); return; }
-  const color = $('#tdColor').value, shape = $('#tdShape').value, movable = $('#tdMovable').checked, description = $('#tdDescription').value.trim();
+  const color = $('#tdColor').value;
+  const shape = $('#tdShape').value;
+  const category = normalizeGameCategory($('#tdCategory').value);
+  const movable = $('#tdMovable').checked;
+  const description = $('#tdDescription').value.trim();
   pushUndo();
   if (editingType) {
     if (name !== editingType.name && S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    editingType.name = name; editingType.color = color; editingType.shape = shape; editingType.movable = movable; editingType.description = description;
+    editingType.name = name;
+    editingType.color = color;
+    editingType.shape = shape;
+    editingType.category = category;
+    editingType.movable = movable;
+    editingType.description = description;
   } else {
     if (S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
-    S.types.push({ name, color, shape, movable, description });
+    S.types.push({ name, color, shape, category, movable, description });
     S.activeType = name;
   }
   $('#typeDlg').close(); renderAll(); autosave();
@@ -977,7 +995,12 @@ function serialize(includeEditorState = false) {
     // 保留 v1 頂層欄位；未放出生點時以 null 表示，避免捏造不存在的座標。
     spawnUnit: spawn ? { x: spawn.x, y: spawn.y } : null,
     types: S.types.map(t => {
-      const o = { name: t.name, color: t.color, shape: t.shape };
+      const o = {
+        name: t.name,
+        color: t.color,
+        shape: t.shape,
+        category: normalizeGameCategory(t.category),
+      };
       if (t.movable) o.movable = true;
       if (t.description) o.description = t.description;
       return o;
@@ -1033,7 +1056,17 @@ function deserialize(d) {
   const posNum = (v, fallback) => (Number.isFinite(+v) && +v > 0 ? +v : fallback);
   S.world = { w: posNum(d.world?.wUnit, 80), h: posNum(d.world?.hUnit, 20) };
   S.snap = d.snap ?? 0.5;
-  if (Array.isArray(d.types) && d.types.length) S.types = d.types.map(t => ({ name: t.name, color: t.color || '#888', shape: t.shape || 'rect', movable: Boolean(t.movable), description: t.description || '' }));
+  if (Array.isArray(d.types) && d.types.length) {
+    S.types = d.types.map(t => ({
+      name: t.name,
+      color: t.color || '#888',
+      shape: t.shape || 'rect',
+      // 舊檔無 category → object（向後相容）；不依 type 名猜，避免靜默改語意
+      category: normalizeGameCategory(t.category),
+      movable: Boolean(t.movable),
+      description: t.description || '',
+    }));
+  }
   S.els = (d.elements || []).map(e => ({
     id: e.id, kind: e.kind || (e.wUnit != null ? 'rect' : 'point'), type: e.type || 'unknown',
     x: e.xUnit ?? 0, y: e.yUnit ?? 0,

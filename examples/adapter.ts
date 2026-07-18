@@ -1,12 +1,23 @@
 /**
  * 範例轉接器：把 levelcraft/v1 轉成某個平台遊戲的關卡結構。
  *
- * 重點：編輯器輸出是「中性」的（只有 type 字串 + 單位座標）。
- * 「哪個 type 算實心地形、哪個致死、哪個是互動物件」是遊戲的決定，
- * 全集中在下面這張 CATEGORY 對照表。換一款遊戲，只改這張表。
+ * v0.15+：優先讀 types[].category（編輯器 SSOT）；缺省才 fallback 本表（舊檔相容）。
+ * 換遊戲：仍可改 fallback 表，或完全信任 JSON 裡的 category。
  */
 
 // ---- 編輯器輸出型別（levelcraft/v1）----
+type GameCategory = 'solid' | 'hazard' | 'object' | 'decor';
+
+interface UnitType {
+  name: string;
+  color?: string;
+  shape?: 'rect' | 'point';
+  /** 遊戲語意；舊檔可能缺，此時走 CATEGORY fallback */
+  category?: GameCategory | string;
+  movable?: boolean;
+  description?: string;
+}
+
 interface UnitElement {
   id: string;
   kind: 'rect' | 'point';
@@ -23,6 +34,7 @@ interface UnitLevel {
   name: string;
   world: { wUnit: number; hUnit: number };
   spawnUnit: { x: number; y: number };
+  types?: UnitType[];
   elements: UnitElement[];
 }
 
@@ -42,12 +54,19 @@ interface GameLevel {
   objects: ObjectConfig[];
 }
 
-/** 語意對照表：把中性 type 分到遊戲的三大類。換遊戲只改這裡。 */
-const CATEGORY: Record<string, 'solid' | 'hazard' | 'object'> = {
+/** 舊檔 fallback：JSON 無 types[].category 時才用。新檔應以編輯器 category 為準。 */
+const CATEGORY: Record<string, GameCategory> = {
   ground: 'solid', oneway: 'solid', wall: 'solid', ladder: 'solid',
   spike: 'hazard', saw: 'hazard',
   goal: 'object', key: 'object', door: 'object', switch: 'object', checkpoint: 'object',
 };
+
+function resolveCategory(typeName: string, types?: UnitType[]): GameCategory {
+  const def = types?.find(t => t.name === typeName);
+  const raw = def?.category;
+  if (raw === 'solid' || raw === 'hazard' || raw === 'object' || raw === 'decor') return raw;
+  return CATEGORY[typeName] ?? 'object';
+}
 
 export function toGameLevel(lv: UnitLevel): GameLevel {
   const solids: SolidConfig[] = [];
@@ -55,7 +74,8 @@ export function toGameLevel(lv: UnitLevel): GameLevel {
   const objects: ObjectConfig[] = [];
 
   for (const e of lv.elements) {
-    const cat = CATEGORY[e.type] ?? 'object';
+    const cat = resolveCategory(e.type, lv.types);
+    if (cat === 'decor') continue; // 裝飾：無碰撞、不進 solids/hazards/objects
     if (cat === 'solid' && e.kind === 'rect') {
       solids.push({ xUnit: e.xUnit, yUnit: e.yUnit, wUnit: e.wUnit!, hUnit: e.hUnit! });
     } else if (cat === 'hazard' && e.kind === 'rect') {

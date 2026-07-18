@@ -21,6 +21,15 @@ function loadIntermediateKind() {
 }
 
 const intermediateKind = loadIntermediateKind();
+
+function loadNormalizeGameCategory() {
+  const src = fs.readFileSync(path.join(__dirname, "editor.js"), "utf8");
+  const m = src.match(/function normalizeGameCategory\(cat\) \{[\s\S]*?\n\}/);
+  if (!m) throw new Error("editor.js 找不到 normalizeGameCategory（改名了就同步這裡）");
+  return new Function("return (" + m[0].replace("function normalizeGameCategory", "function") + ")")();
+}
+
+const normalizeGameCategory = loadNormalizeGameCategory();
 const BASE = path.join(__dirname, "examples", "celeste-import");
 
 /** @type {Array<[string, (file: string, kind: string|null) => boolean, string]>} */
@@ -56,5 +65,53 @@ for (const [dir, predicate, label] of CASES) {
   for (const b of bad) console.log(`        ✗ ${b}`);
 }
 
-console.log(failed ? `\n${failed} 個分類錯誤（共 ${ran} 檔）` : `\n全部通過（${ran} 檔）`);
+// category 相容性：有值保留、缺欄／亂值 → object（對齊 deserialize 行為）
+const catCases = [
+  ["solid", "solid"],
+  ["hazard", "hazard"],
+  ["object", "object"],
+  ["decor", "decor"],
+  ["SOLID", "solid"],
+  [undefined, "object"],
+  ["", "object"],
+  ["nope", "object"],
+];
+let catFail = 0;
+for (const [input, expect] of catCases) {
+  const got = normalizeGameCategory(input);
+  if (got !== expect) {
+    catFail++;
+    console.log(`FAIL  category normalize  ${JSON.stringify(input)} → ${got}（預期 ${expect}）`);
+  }
+}
+if (!catFail) console.log(`PASS  category normalize ${catCases.length} 案  有/無 category 皆可正規化`);
+failed += catFail;
+
+// 舊真關卡 types 可無 category；模擬匯入後每個 type 應為合法 enum（缺欄 → object）
+const sampleLevel = path.join(BASE, "out", "celeste__0-Intro__start.json");
+if (fs.existsSync(sampleLevel)) {
+  const d = JSON.parse(fs.readFileSync(sampleLevel, "utf8"));
+  const types = (d.types || []).map(t => ({
+    name: t.name,
+    raw: t.category,
+    category: normalizeGameCategory(t.category),
+  }));
+  const ok = types.length > 0 && types.every(t =>
+    ["solid", "hazard", "object", "decor"].includes(t.category)
+  );
+  // 此 fixture 目前無 category 欄 → 全部應預設 object
+  const missingBecomeObject = types.every(t =>
+    t.raw != null && t.raw !== "" ? true : t.category === "object"
+  );
+  if (ok && missingBecomeObject) {
+    console.log(`PASS  category import-compat  ${types.length} types  舊檔無 category → object`);
+  } else {
+    failed++;
+    console.log("FAIL  category import-compat");
+  }
+} else {
+  console.log("SKIP  category import-compat (sample level 不存在)");
+}
+
+console.log(failed ? `\n${failed} 個錯誤（共 ${ran} 檔 + category 案）` : `\n全部通過（${ran} 檔 + category 案）`);
 process.exit(failed ? 1 : 0);
