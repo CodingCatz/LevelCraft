@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LevelCraft · Phaser 3 adapter demo</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: #0b0f14;
+      color: #e2e8f0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+    }
+    h1 { font-size: 1.05rem; font-weight: 600; margin: 0; letter-spacing: 0.02em; }
+    p { margin: 0; color: #94a3b8; font-size: 0.85rem; max-width: 40rem; text-align: center; }
+    #game {
+      border: 1px solid #243044;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+    }
+    code { color: #7dd3fc; font-size: 0.8em; }
+  </style>
+</head>
+<body>
+  <h1>LevelCraft → Phaser 3</h1>
+  <p>
+    Official adapter demo. Serve this folder (or repo root) over HTTP —
+    <code>python -m http.server</code> then open
+    <code>/adapters/phaser/example/</code>.
+  </p>
+  <div id="game"></div>
+
+  <!-- Phaser 3 CDN (demo only; the adapter itself has zero dependencies) -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -108,6 +108,18 @@ v0.15+ 類型可攜帶 `category` 語意，遊戲端優先讀 JSON 的 `types[].
 示範把 `levelcraft/v1` 轉成 `solids / objects / hazards`（`decor` 略過）。
 單位換像素就是 `xUnit * UNIT_PX`，`UNIT_PX` 由遊戲定義。
 
+### 官方引擎轉接器
+
+| 引擎 | 路徑 | 說明 |
+|------|------|------|
+| **Phaser 3** | [`adapters/phaser/`](adapters/phaser/) | 零依賴單檔 `loadLevelCraft(scene, json, { unitPx })` → Arcade StaticGroup / Zone；含 demo 與 Node 自檢 |
+
+```js
+import { loadLevelCraft } from './adapters/phaser/levelcraft-phaser.js';
+const level = loadLevelCraft(scene, json, { unitPx: 32 });
+// level.solids / level.hazards / level.objects / level.spawn
+```
+
 ### 從其他遊戲關卡匯入（實驗）
 
 Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線見 [`examples/celeste-import/`](examples/celeste-import/)（含合成 fixture 驗管線；**不**附官方資產）。管線輸出的 `.json` 用上面的「匯入 JSON」→「選擇檔案」直接開即可——要開的是 `data/levelcraft/` 底下的 `celeste__*.json`（已轉成 `levelcraft/v1`）；`data/intermediate/` 是管線中繼格式，開了會跳錯誤並提示正確路徑。

@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.16.0] - 2026-07-18
+
+### Added
+- **官方 Phaser 3 轉接器** [`adapters/phaser/`](adapters/phaser/)：零依賴單檔 ES module `loadLevelCraft(scene, json, { unitPx })`，依 `types[].category` 分流成 Arcade StaticGroup（solid）／Zone groups（hazard／object）／純資料（decor）；提供 `byId`、`resolveLinks`、path 單位→px。
+- 純資料層可 Node 自檢：`node adapters/phaser/check.cjs`（不依賴 Phaser）。
+- 最小可跑 demo：`adapters/phaser/example/`（Phaser CDN + 範例關卡 JSON）。
+
+### Docs
+- `adapters/phaser/README.md`：API、座標、category 對應、links/path。
+- 主 README「遊戲端怎麼吃」加官方轉接器一節。
+
 ## [0.15.0] - 2026-07-18
 
 ### Added
