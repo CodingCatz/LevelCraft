@@ -1,0 +1,18 @@
+{
+    "name": "LevelCraft.Unity.Editor",
+    "rootNamespace": "LevelCraft.Unity.Editor",
+    "references": [
+        "LevelCraft.Unity.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

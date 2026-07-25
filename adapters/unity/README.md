@@ -8,10 +8,14 @@ Copy this folder into your Unity project:
 
 ```
 Assets/LevelCraft/          ← rename/move as you like
-  Runtime/                  ← player builds
-  Editor/                   ← editor-only
-  Tests/                    ← optional EditMode tests
+  Runtime/                  ← player builds (+ Runtime.asmdef)
+  Editor/                   ← editor-only (+ Editor.asmdef → Runtime)
+  Tests/Editor/             ← optional EditMode tests (+ Tests.asmdef → Editor)
 ```
+
+**Important:** EditMode tests must stay under `Tests/Editor/` and reference the Editor
+assembly. Putting them under bare `Tests/` compiles them as **runtime** code, which
+cannot see `LevelCraft.Unity.Editor` (CS0234).
 
 Requires **Unity 2021.3 LTS+** with **2D Tilemap** (`com.unity.2d.tilemap`, included in 2D template).
 
@@ -86,7 +90,8 @@ Formulas are documented in `Editor/LevelCraftDocument.cs` and covered by:
 node adapters/unity/check-coords.cjs
 ```
 
-Unity EditMode tests: `Tests/LevelCraftCoordTests.cs` (Test Framework).
+Unity EditMode tests: `Tests/Editor/LevelCraftCoordTests.cs` (needs **Test Framework** package;
+assembly only builds when `UNITY_INCLUDE_TESTS` is defined).
 
 ## JSON parsing
 

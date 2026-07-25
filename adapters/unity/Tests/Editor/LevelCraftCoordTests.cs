@@ -1,4 +1,6 @@
-#if UNITY_INCLUDE_TESTS || UNITY_EDITOR
+// EditMode tests live under Tests/Editor + LevelCraft.Unity.Tests.asmdef so they
+// compile into an Editor test assembly that references LevelCraft.Unity.Editor.
+// Putting them under Tests/ (runtime) caused CS0234: LevelCraft.Unity.Editor missing.
 using NUnit.Framework;
 using UnityEngine;
 using LevelCraft.Unity.Editor;
@@ -121,4 +123,3 @@ namespace LevelCraft.Unity.Tests
         }
     }
 }
-#endif
