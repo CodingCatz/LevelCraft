@@ -118,13 +118,20 @@ assert(normalizeCategory('nope') === 'object', 'unknown category → object');
   assert(near(p0.y, 8), 'path point y-flip 10-2=8');
 }
 
-// Demo level from phaser example (shared fixture semantics)
+// Demo level from phaser example / Fixtures (shared fixture semantics)
 {
   const fs = require('node:fs');
   const path = require('node:path');
-  const demoPath = path.join(__dirname, '..', 'phaser', 'example', 'level-demo.json');
-  if (fs.existsSync(demoPath)) {
+  const demoPath =
+    [
+      path.join(__dirname, 'Fixtures', 'level-demo.json'),
+      path.join(__dirname, '..', 'phaser', 'example', 'level-demo.json'),
+    ].find((p) => fs.existsSync(p)) || null;
+  if (demoPath) {
     const demo = JSON.parse(fs.readFileSync(demoPath, 'utf8'));
+    assert(demo.format === 'levelcraft/v1', 'demo format levelcraft/v1');
+    assert(demo.world && demo.world.wUnit > 0 && demo.world.hUnit > 0, 'demo has world');
+    assert(Array.isArray(demo.elements) && demo.elements.length > 0, 'demo has elements');
     const worldH = demo.world.hUnit;
     const floor = demo.elements.find((e) => e.id === 'floor');
     const { bl, size } = rectToUnity(floor.xUnit, floor.yUnit, floor.wUnit, floor.hUnit, worldH, 1);
@@ -137,6 +144,42 @@ assert(normalizeCategory('nope') === 'object', 'unknown category → object');
     assert(sc.yMin === 2 && sc.yMax === 2 && sc.xMin === 11 && sc.xMax === 13, 'demo spikes cells');
   } else {
     console.log('SKIP  phaser demo fixture not found');
+  }
+}
+
+// Structural gate mirrored from LevelCraftDocument.ThrowIfNotLevelCraftPayload
+function classifyPayload(d) {
+  if (!d || typeof d !== 'object' || Array.isArray(d)) return 'invalid-root';
+  if (Array.isArray(d.rooms) && d.rooms.length && d.rooms[0] && d.rooms[0].file) return 'intermediate-index';
+  if (Array.isArray(d.solids)) return 'intermediate-room';
+  if (Array.isArray(d.entities) && (d.sourceMap || d.sourceRoom)) return 'intermediate-room';
+  if (!d.world) return 'missing-world';
+  if (!Array.isArray(d.elements) && !Array.isArray(d.els)) return 'missing-elements';
+  return 'levelcraft';
+}
+{
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const fixtures = path.join(__dirname, 'Fixtures');
+  if (fs.existsSync(path.join(fixtures, 'level-demo.json'))) {
+    const demo = JSON.parse(fs.readFileSync(path.join(fixtures, 'level-demo.json'), 'utf8'));
+    assert(classifyPayload(demo) === 'levelcraft', 'fixture demo classified levelcraft');
+  }
+  if (fs.existsSync(path.join(fixtures, 'intermediate-room.sample.json'))) {
+    const mid = JSON.parse(fs.readFileSync(path.join(fixtures, 'intermediate-room.sample.json'), 'utf8'));
+    assert(classifyPayload(mid) === 'intermediate-room', 'fixture intermediate classified');
+  }
+  assert(
+    classifyPayload({ count: 1, rooms: [{ file: 'a.json', sourceRoom: 'r' }] }) === 'intermediate-index',
+    'index classified',
+  );
+  assert(classifyPayload({ format: 'x', elements: [] }) === 'missing-world', 'bare elements still missing-world');
+  // Real converted Celeste sample if present
+  const celeste = path.join(fixtures, 'celeste-start.json');
+  if (fs.existsSync(celeste)) {
+    const c = JSON.parse(fs.readFileSync(celeste, 'utf8'));
+    assert(classifyPayload(c) === 'levelcraft', 'celeste-start is levelcraft');
+    assert(c.world.wUnit > 0 && Array.isArray(c.elements), 'celeste-start structural fields');
   }
 }
 

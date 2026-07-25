@@ -158,7 +158,12 @@ namespace LevelCraft.Unity.Editor
             rb.bodyType = RigidbodyType2D.Static;
 
             var tcol = go.AddComponent<TilemapCollider2D>();
+#if UNITY_6000_0_OR_NEWER
+            // Unity 6: usedByComposite → compositeOperation
+            tcol.compositeOperation = Collider2D.CompositeOperation.Merge;
+#else
             tcol.usedByComposite = true;
+#endif
 
             var composite = go.AddComponent<CompositeCollider2D>();
             composite.geometryType = CompositeCollider2D.GeometryType.Polygons;

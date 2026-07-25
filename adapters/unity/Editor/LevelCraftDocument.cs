@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using UnityEngine;
+// No System.Linq — keep adapter free of extra framework surface.
 
 namespace LevelCraft.Unity.Editor
 {
@@ -237,9 +238,18 @@ namespace LevelCraft.Unity.Editor
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentException("LevelCraft JSON is empty");
 
+            // Strip UTF-8 BOM if present (File.ReadAllText usually removes it, but
+            // some Unity TextAsset / copy paths leave U+FEFF at the start).
+            if (json.Length > 0 && json[0] == '\uFEFF')
+                json = json.Substring(1);
+
             var root = MiniJson.Deserialize(json) as Dictionary<string, object>;
             if (root == null)
                 throw new ArgumentException("LevelCraft JSON root must be an object");
+
+            // Intermediate pipeline files are often co-located with converted levels;
+            // mis-picking them yields a bare "Missing world" without a path forward.
+            ThrowIfNotLevelCraftPayload(root);
 
             var doc = new LevelCraftDocument
             {
@@ -252,9 +262,23 @@ namespace LevelCraft.Unity.Editor
 
             var world = GetDict(root, "world");
             if (world == null)
-                throw new ArgumentException("Missing world");
-            doc.WorldWUnit = GetFloat(world, "wUnit");
-            doc.WorldHUnit = GetFloat(world, "hUnit");
+            {
+                throw new ArgumentException(
+                    "Missing world — not a levelcraft/v1 level.\n" +
+                    "Expected top-level keys: format, world{wUnit,hUnit}, types, elements.\n" +
+                    "Found keys: " + JoinKeys(root) + "\n" +
+                    "Use editor Export, or examples/.../data/levelcraft/*.json " +
+                    "(not intermediate/ or _index.json).");
+            }
+            // Accept editor autosave {w,h} as well as export {wUnit,hUnit}.
+            doc.WorldWUnit = world.ContainsKey("wUnit") ? GetFloat(world, "wUnit") : GetFloat(world, "w");
+            doc.WorldHUnit = world.ContainsKey("hUnit") ? GetFloat(world, "hUnit") : GetFloat(world, "h");
+            if (doc.WorldWUnit <= 0f || doc.WorldHUnit <= 0f)
+            {
+                throw new ArgumentException(
+                    "world size invalid (need positive wUnit/hUnit or w/h). Keys in world: " +
+                    JoinKeys(world));
+            }
 
             var spawn = GetDict(root, "spawnUnit");
             if (spawn != null)
@@ -279,9 +303,11 @@ namespace LevelCraft.Unity.Editor
                 }
             }
 
-            var elements = GetList(root, "elements");
+            // Export uses "elements"; editor autosave historically used "els".
+            var elements = GetList(root, "elements") ?? GetList(root, "els");
             if (elements == null)
-                throw new ArgumentException("Missing elements");
+                throw new ArgumentException(
+                    "Missing elements — not a levelcraft/v1 level. Found keys: " + JoinKeys(root));
 
             foreach (var item in elements)
             {
@@ -292,15 +318,17 @@ namespace LevelCraft.Unity.Editor
                     Id = GetString(ed, "id"),
                     Kind = GetString(ed, "kind"),
                     TypeName = GetString(ed, "type"),
-                    XUnit = GetFloat(ed, "xUnit"),
-                    YUnit = GetFloat(ed, "yUnit"),
+                    // Export: xUnit/yUnit; editor autosave els: x/y
+                    XUnit = ed.ContainsKey("xUnit") ? GetFloat(ed, "xUnit") : GetFloat(ed, "x"),
+                    YUnit = ed.ContainsKey("yUnit") ? GetFloat(ed, "yUnit") : GetFloat(ed, "y"),
                     Description = GetString(ed, "description"),
                 };
-                if (ed.ContainsKey("wUnit") || ed.ContainsKey("hUnit"))
+                if (ed.ContainsKey("wUnit") || ed.ContainsKey("hUnit") ||
+                    ed.ContainsKey("w") || ed.ContainsKey("h"))
                 {
                     el.HasSize = true;
-                    el.WUnit = GetFloat(ed, "wUnit", 1f);
-                    el.HUnit = GetFloat(ed, "hUnit", 1f);
+                    el.WUnit = ed.ContainsKey("wUnit") ? GetFloat(ed, "wUnit", 1f) : GetFloat(ed, "w", 1f);
+                    el.HUnit = ed.ContainsKey("hUnit") ? GetFloat(ed, "hUnit", 1f) : GetFloat(ed, "h", 1f);
                 }
                 else if (el.Kind == "rect")
                 {
@@ -343,6 +371,63 @@ namespace LevelCraft.Unity.Editor
             }
 
             return doc;
+        }
+
+        /// <summary>
+        /// Detect Celeste intermediate pipeline payloads (room / room-index) and
+        /// throw an actionable error before the generic "Missing world" path.
+        /// Mirrors editor.js intermediateKind + validateLevel.
+        /// </summary>
+        static void ThrowIfNotLevelCraftPayload(Dictionary<string, object> root)
+        {
+            if (root == null) return;
+
+            var solids = GetList(root, "solids");
+            var entities = GetList(root, "entities");
+            var rooms = GetList(root, "rooms");
+            var sourceMap = GetString(root, "sourceMap");
+            var sourceRoom = GetString(root, "sourceRoom");
+
+            // _index.json style room list
+            if (rooms != null && rooms.Count > 0)
+            {
+                var first = rooms[0] as Dictionary<string, object>;
+                if (first != null && (first.ContainsKey("file") || first.ContainsKey("sourceRoom")))
+                {
+                    throw new ArgumentException(
+                        "This is an intermediate room index (_index.json), not levelcraft/v1.\n" +
+                        "Open a converted file under examples/celeste-import/data/levelcraft/ " +
+                        "(celeste__*.json), or run intermediate_to_levelcraft.cjs first.");
+                }
+            }
+
+            // Room intermediate: solids rows and/or entities + sourceMap/sourceRoom
+            if (solids != null ||
+                (entities != null && (!string.IsNullOrEmpty(sourceMap) || !string.IsNullOrEmpty(sourceRoom))))
+            {
+                string room = null;
+                if (!string.IsNullOrEmpty(sourceMap) && !string.IsNullOrEmpty(sourceRoom))
+                    room = sourceMap + "/" + sourceRoom;
+                else if (!string.IsNullOrEmpty(sourceMap))
+                    room = sourceMap;
+                else if (!string.IsNullOrEmpty(sourceRoom))
+                    room = sourceRoom;
+
+                throw new ArgumentException(
+                    "This is an intermediate room payload" +
+                    (string.IsNullOrEmpty(room) ? "" : " (" + room + ")") +
+                    ", not levelcraft/v1.\n" +
+                    "Use examples/celeste-import/data/levelcraft/celeste__*.json " +
+                    "or convert with intermediate_to_levelcraft.cjs.");
+            }
+        }
+
+        static string JoinKeys(Dictionary<string, object> d)
+        {
+            if (d == null || d.Count == 0) return "(none)";
+            var keys = new List<string>(d.Keys);
+            keys.Sort(StringComparer.Ordinal);
+            return string.Join(", ", keys);
         }
 
         static string GetString(Dictionary<string, object> d, string key)

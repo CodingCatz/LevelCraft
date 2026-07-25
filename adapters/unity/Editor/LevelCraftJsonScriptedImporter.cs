@@ -34,7 +34,8 @@ namespace LevelCraft.Unity.Editor
             {
                 var go = t.gameObject;
                 if (go == root) continue;
-                ctx.AddObjectToAsset(go.name + "_" + go.GetInstanceID(), go);
+                // Stable-enough sub-asset id without relying on deprecated GetInstanceID in Unity 6.
+                ctx.AddObjectToAsset(go.name + "_" + go.GetHashCode(), go);
             }
 
             ctx.AddObjectToAsset("main", root);

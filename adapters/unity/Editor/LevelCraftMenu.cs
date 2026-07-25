@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using LevelCraft.Unity;
 
 namespace LevelCraft.Unity.Editor
 {
@@ -18,6 +19,78 @@ namespace LevelCraft.Unity.Editor
     {
         const string MenuPath = "Assets/LevelCraft/Import Level JSON…";
         const string MenuPathScene = "GameObject/LevelCraft/Import Level JSON…";
+
+        /// <summary>
+        /// Headless smoke: parse + build agreed-structure fixture.
+        /// Unity: <c>-executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportSmoke</c>
+        /// Exit 0 on success, 1 on failure. Looks for Fixtures under Assets/.../LevelCraft.
+        /// </summary>
+        public static void BatchImportSmoke()
+        {
+            try
+            {
+                var fixture = FindFixturePath();
+                if (fixture == null)
+                {
+                    Debug.LogError("[LevelCraft] BatchImportSmoke: fixture level-demo.json not found under Assets.");
+                    EditorApplication.Exit(1);
+                    return;
+                }
+
+                Debug.Log("[LevelCraft] BatchImportSmoke fixture=" + fixture);
+                var text = File.ReadAllText(fixture);
+                var doc = LevelCraftDocument.Parse(text);
+                if (doc.WorldWUnit <= 0f || doc.WorldHUnit <= 0f || doc.Elements.Count == 0)
+                {
+                    Debug.LogError("[LevelCraft] BatchImportSmoke: parsed doc empty/invalid");
+                    EditorApplication.Exit(1);
+                    return;
+                }
+
+                var root = LevelCraftLevelBuilder.Build(doc, new LevelCraftLevelBuilder.Options { Scale = 1f });
+                if (root == null)
+                {
+                    Debug.LogError("[LevelCraft] BatchImportSmoke: Build returned null");
+                    EditorApplication.Exit(1);
+                    return;
+                }
+
+                var grid = root.GetComponentInChildren<UnityEngine.Grid>();
+                var maps = root.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>();
+                var elements = root.GetComponentsInChildren<LevelCraftElement>();
+                Debug.Log(
+                    $"[LevelCraft] BatchImportSmoke OK name={doc.Name} world={doc.WorldWUnit}x{doc.WorldHUnit} " +
+                    $"elements={doc.Elements.Count} grid={(grid != null)} tilemaps={maps.Length} " +
+                    $"LevelCraftElement={elements.Length}");
+                UnityEngine.Object.DestroyImmediate(root);
+                EditorApplication.Exit(0);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError("[LevelCraft] BatchImportSmoke FAILED: " + ex);
+                EditorApplication.Exit(1);
+            }
+        }
+
+        static string FindFixturePath()
+        {
+            // Prefer packaged fixture next to the adapter copy in the Unity project.
+            var candidates = new[]
+            {
+                Path.Combine(Application.dataPath, "LevelCraft", "Fixtures", "level-demo.json"),
+                Path.Combine(Application.dataPath, "unity", "Fixtures", "level-demo.json"),
+                Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "..", "LevelCraft", "adapters", "unity", "Fixtures", "level-demo.json")),
+                Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "LevelCraft", "adapters", "phaser", "example", "level-demo.json")),
+            };
+            foreach (var c in candidates)
+            {
+                if (!string.IsNullOrEmpty(c) && File.Exists(c)) return c;
+            }
+            // Last resort: any level-demo.json under Assets
+            foreach (var f in Directory.GetFiles(Application.dataPath, "level-demo.json", SearchOption.AllDirectories))
+                return f;
+            return null;
+        }
 
         /// <summary>Import from disk into the active scene.</summary>
         [MenuItem(MenuPath, false, 2000)]

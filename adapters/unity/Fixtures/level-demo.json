@@ -1,0 +1,97 @@
+{
+  "format": "levelcraft/v1",
+  "name": "phaser-demo",
+  "world": { "wUnit": 30, "hUnit": 16 },
+  "snap": 0.5,
+  "spawnUnit": { "x": 2, "y": 12 },
+  "types": [
+    { "name": "ground", "color": "#5568d3", "shape": "rect", "category": "solid" },
+    { "name": "wall", "color": "#3f4a8a", "shape": "rect", "category": "solid" },
+    { "name": "spike", "color": "#fc8181", "shape": "rect", "category": "hazard" },
+    { "name": "switch", "color": "#f687b3", "shape": "point", "category": "object" },
+    { "name": "door", "color": "#b794f4", "shape": "point", "category": "object" },
+    { "name": "goal", "color": "#4fd1c5", "shape": "point", "category": "object" },
+    { "name": "bush", "color": "#68d391", "shape": "rect", "category": "decor" }
+  ],
+  "elements": [
+    {
+      "id": "floor",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 0,
+      "yUnit": 14,
+      "wUnit": 30,
+      "hUnit": 2
+    },
+    {
+      "id": "plat-a",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 6,
+      "yUnit": 11,
+      "wUnit": 5,
+      "hUnit": 1
+    },
+    {
+      "id": "plat-b",
+      "kind": "rect",
+      "type": "ground",
+      "xUnit": 14,
+      "yUnit": 9,
+      "wUnit": 4,
+      "hUnit": 1
+    },
+    {
+      "id": "wall-l",
+      "kind": "rect",
+      "type": "wall",
+      "xUnit": 0,
+      "yUnit": 0,
+      "wUnit": 1,
+      "hUnit": 14
+    },
+    {
+      "id": "spikes",
+      "kind": "rect",
+      "type": "spike",
+      "xUnit": 11,
+      "yUnit": 13,
+      "wUnit": 3,
+      "hUnit": 1
+    },
+    {
+      "id": "sw1",
+      "kind": "point",
+      "type": "switch",
+      "xUnit": 7.5,
+      "yUnit": 10,
+      "links": ["door1"],
+      "props": { "once": "true" },
+      "description": "opens door1"
+    },
+    {
+      "id": "door1",
+      "kind": "point",
+      "type": "door",
+      "xUnit": 20,
+      "yUnit": 12.5,
+      "description": "linked from sw1"
+    },
+    {
+      "id": "goal1",
+      "kind": "point",
+      "type": "goal",
+      "xUnit": 26,
+      "yUnit": 12.5
+    },
+    {
+      "id": "bush1",
+      "kind": "rect",
+      "type": "bush",
+      "xUnit": 24,
+      "yUnit": 12,
+      "wUnit": 2,
+      "hUnit": 2
+    }
+  ]
+}

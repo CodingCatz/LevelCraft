@@ -23,7 +23,17 @@ Requires **Unity 2021.3 LTS+** with **2D Tilemap** (`com.unity.2d.tilemap`, incl
 
 1. Open a scene.
 2. **Assets → LevelCraft → Import Level JSON…** (or **GameObject → LevelCraft → Import Level JSON…**).
-3. Pick any LevelCraft-exported `.json`.
+3. Pick a **levelcraft/v1** `.json` (editor Export, or `Fixtures/level-demo.json`).
+
+### Which JSON file?
+
+| File | Import? |
+|------|---------|
+| Editor **Export** / `data/levelcraft/celeste__*.json` / `Fixtures/level-demo.json` | ✅ `format: levelcraft/v1` + `world` + `elements` |
+| `data/intermediate/*.json` room payload (`solids` / `entities`) | ❌ pipeline mid-file — convert first |
+| `data/intermediate/_index.json` | ❌ room list, not a level |
+
+Mis-picking intermediate used to surface only as **Parse failed: Missing world**. From 0.17.2 the dialog names the intermediate kind and points at the converted path.
 
 Why menu instead of forcing a custom extension?
 
@@ -109,7 +119,8 @@ Hand-rolled minimal parser in `LevelCraftDocument` / `MiniJson` — **not** `Jso
 | Check | How |
 |-------|-----|
 | Coordinates / category fallback | `node adapters/unity/check-coords.cjs` |
-| Parse links/path | Unity Test Runner → EditMode → `LevelCraftCoordTests` |
+| Parse links/path / reject intermediate / demo structure | Unity Test Runner → EditMode → `LevelCraftCoordTests` |
+| Headless import smoke | `Unity -batchmode -projectPath <proj> -executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportSmoke` (needs `Fixtures/level-demo.json` under Assets copy) |
 | Tilemap import | Menu import in a 2D project; open Tile Palette on Solids |
 
 ## Phaser parity note

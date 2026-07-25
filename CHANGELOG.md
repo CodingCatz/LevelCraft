@@ -3,6 +3,21 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.17.2] - 2026-07-25
+
+### Fixed
+- Unity importer 誤選 intermediate / `_index.json` 時不再只丟 `Missing world`：先辨識管線中間檔並給可據以行動的錯誤訊息（對齊 web 編輯器 `validateLevel`）。
+- 接受 UTF-8 BOM 前綴；`world.w`/`h` 與 `elements`/`els` 別名（editor autosave 相容）。
+- Unity 6 棄用 API：`TilemapCollider2D.usedByComposite` → `compositeOperation`；ScriptedImporter 子資產 id 不再用 `GetInstanceID()`。
+
+### Added
+- EditMode：`Parse_AgreedStructure_DemoLevel`、`Parse_Rejects_Intermediate*`、`Parse_BOM_*`。
+- `adapters/unity/Fixtures/`（`level-demo.json`、celeste sample、intermediate 負例）。
+- Headless 煙霧：`LevelCraftMenu.BatchImportSmoke`（`-executeMethod`）。
+
+### Docs
+- README 註明可匯入／不可匯入的 JSON 種類。
+
 ## [0.17.1] - 2026-07-25
 
 ### Fixed
