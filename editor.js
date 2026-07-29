@@ -99,7 +99,31 @@ const icon = (name, className = '') => {
 
 // ---------- 座標轉換 ----------
 const scale = () => S.ppu * S.view.zoom;
-function clampZoom(z) { return Math.min(8, Math.max(0.15, z)); }
+const ZOOM_FLOOR_BASE = 0.15;   // 手動縮放的下限：再小元素就點不到、格線糊成一片灰
+// 「剛好把世界框進畫面」的縮放，未套任何下限。抽成函式是為了讓量測腳本與測試
+// 直接算同一條公式，不必各自複製一份會漂移的副本。
+function fitZoomRaw(rectW, rectH, worldW, worldH, ppu) {
+  const pad = 40;
+  return Math.min(
+    (rectW - pad * 2) / (worldW * ppu),
+    (rectH - pad * 2) / (worldH * ppu),
+  );
+}
+// 縮放下限。只有一條規則：**永遠縮得到「整個世界剛好進畫面」，但不比那更小**。
+// 0.15 是常態下限；世界大到 0.15 都裝不下時（824 張 Celeste room 在 1920×1080 有 9 張），
+// 下限就一路讓到貼合值為止——再往下只會看到世界外的空白，沒有意義。
+// 手動縮放與 fitViewToWorld 共用這一條，所以不會出現「fit 到 0.08、滾一格被彈回 0.15」。
+function zoomFloor(rectW, rectH, worldW, worldH, ppu) {
+  const raw = fitZoomRaw(rectW, rectH, worldW, worldH, ppu);
+  if (!(raw > 0) || !Number.isFinite(raw)) return ZOOM_FLOOR_BASE; // 畫布比 pad 還小等退化情形
+  return Math.min(ZOOM_FLOOR_BASE, raw);
+}
+function clampZoom(z, floor = ZOOM_FLOOR_BASE) { return Math.min(8, Math.max(floor, z)); }
+/** 目前世界／畫布下的實際縮放下限。 */
+function currentZoomFloor() {
+  const r = cw.getBoundingClientRect();
+  return zoomFloor(r.width, r.height, S.world.w, S.world.h, S.ppu);
+}
 function toScreen(ux, uy) { return { x: ux * scale() + S.view.x, y: uy * scale() + S.view.y }; }
 function toUnit(sx, sy) { return { x: (sx - S.view.x) / scale(), y: (sy - S.view.y) / scale() }; }
 function snapU(v) { return S.snap > 0 ? Math.round(v / S.snap) * S.snap : v; }
@@ -576,7 +600,7 @@ cw.addEventListener('wheel', ev => {
   const sx = ev.clientX - rect.left, sy = ev.clientY - rect.top;
   const before = toUnit(sx, sy);
   const factor = ev.deltaY < 0 ? 1.1 : 1 / 1.1;
-  S.view.zoom = clampZoom(S.view.zoom * factor);
+  S.view.zoom = clampZoom(S.view.zoom * factor, currentZoomFloor());
   const after = toUnit(sx, sy);
   S.view.x += (after.x - before.x) * scale();
   S.view.y += (after.y - before.y) * scale();
@@ -818,11 +842,10 @@ function focusOn(e) {
 // 只要使用者先平移／縮放過，關卡就落在畫面外，看起來像「按了沒反應」。
 function fitViewToWorld() {
   const r = cw.getBoundingClientRect();
-  const pad = 40;
-  S.view.zoom = clampZoom(Math.min(
-    (r.width - pad * 2) / (S.world.w * S.ppu),
-    (r.height - pad * 2) / (S.world.h * S.ppu),
-  ));
+  S.view.zoom = clampZoom(
+    fitZoomRaw(r.width, r.height, S.world.w, S.world.h, S.ppu),
+    zoomFloor(r.width, r.height, S.world.w, S.world.h, S.ppu),
+  );
   const s = scale();
   S.view.x = (r.width - S.world.w * s) / 2;
   S.view.y = (r.height - S.world.h * s) / 2;

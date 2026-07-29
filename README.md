@@ -43,7 +43,7 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 | 操作 | 鍵 |
 |------|----|
 | 平移畫布 | 中鍵拖曳 或 空白鍵 + 左鍵拖曳 |
-| 縮放（以游標為中心） | 滾輪 |
+| 縮放（以游標為中心） | 滾輪（上限 800%；下限 15%，但大到 15% 都裝不下的關卡可縮到剛好整張進畫面為止） |
 | 矩形／標記工具 | R / M |
 | 刪除選取 | `Delete` / `Backspace` |
 | 快速刪除游標下元素 | 右鍵 |
@@ -134,9 +134,22 @@ Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線
 
 ```bash
 node check-import.cjs
+node check-fit-zoom.cjs
 ```
 
-零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋。`examples/celeste-import/data/` 未抽取時該組自動略過。
+- `check-import.cjs`：驗匯入分類——管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋。`examples/celeste-import/data/` 未抽取時該組自動略過。
+- `check-fit-zoom.cjs`：驗匯入後的貼合縮放——大關卡不得被縮放下限夾住而溢出畫面，一般關卡行為不得改變。
+
+兩支都零依賴，直接從 `editor.js` 抽出貨中的函式來跑，改壞了就會 FAIL。
+
+量測工具（非自檢，需要本機資料）：
+
+```bash
+node measure-fit-zoom.cjs --dir examples/celeste-import/data/levelcraft
+```
+
+逐張算出「把整個世界框進畫面」需要的縮放，列出低於常態下限的張數、最小值、分佈與修前／修後對照。
+`--viewport 1366x768` 可指定視窗尺寸（可重複），`--json` output 機器可讀。
 
 ## 版本
 
