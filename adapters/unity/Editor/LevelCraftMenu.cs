@@ -47,7 +47,13 @@ namespace LevelCraft.Unity.Editor
                     return;
                 }
 
-                var root = LevelCraftLevelBuilder.Build(doc, new LevelCraftLevelBuilder.Options { Scale = 1f });
+                var root = LevelCraftLevelBuilder.Build(doc, new LevelCraftLevelBuilder.Options
+                {
+                    Scale = 1f,
+                    // Smoke tests must not mutate the host project's palette assets.
+                    TileAssetFolder = null,
+                    CreateTilePalette = false,
+                });
                 if (root == null)
                 {
                     Debug.LogError("[LevelCraft] BatchImportSmoke: Build returned null");
@@ -156,9 +162,12 @@ namespace LevelCraft.Unity.Editor
             var options = new LevelCraftLevelBuilder.Options
             {
                 Scale = scale,
-                TileAssetFolder = suggestTileFolder
-                    ? "Assets/LevelCraftTiles"
-                    : null,
+                // Tiles must be assets, not transient ScriptableObjects: scene reload and
+                // Tile Palette painting both require stable TileBase references.
+                TileAssetFolder = "Assets/LevelCraftTiles",
+                TilePaletteFolder = "Assets/LevelCraftTiles",
+                TilePaletteName = "LevelCraftPalette",
+                CreateTilePalette = true,
             };
 
             var root = LevelCraftLevelBuilder.Build(doc, options);

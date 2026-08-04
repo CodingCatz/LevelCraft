@@ -27,6 +27,10 @@ namespace LevelCraft.Unity.Editor
             var root = LevelCraftLevelBuilder.Build(doc, new LevelCraftLevelBuilder.Options
             {
                 Scale = scale <= 0f ? 1f : scale,
+                TileAssetFolder = "Assets/LevelCraftTiles",
+                TilePaletteFolder = "Assets/LevelCraftTiles",
+                TilePaletteName = "LevelCraftPalette",
+                CreateTilePalette = true,
             });
 
             // Register entire hierarchy as sub-assets so the import is self-contained.

@@ -43,7 +43,29 @@ Why menu instead of forcing a custom extension?
 **Optional:** rename a file to `*.levelcraft` to use the ScriptedImporter (Inspector scale field).
 
 **Selected asset:** right-click a project `.json` → **LevelCraft → Import Selected JSON as Level**
-(also writes coloured tile assets under `Assets/LevelCraftTiles/`).
+(writes persistent coloured Tile assets and a native `Assets/LevelCraftTiles/LevelCraftPalette.prefab`).
+
+## Tile Palette workflow (the usable edit path)
+
+The importer writes `LC_WhiteTexture.asset`, `LC_WhiteSprite.asset`, one `LC_*_*.asset`
+Tile per type, and `LevelCraftPalette.prefab` under `Assets/LevelCraftTiles/`. Stable
+assets are required so scene reloads and Tile Palette painting keep valid TileBase
+references.
+
+After importing:
+
+1. Open **Window → 2D → Tile Palette**.
+2. Select `LevelCraftPalette` in the palette dropdown. If it is not listed, drag
+   `Assets/LevelCraftTiles/LevelCraftPalette.prefab` into the Tile Palette window once.
+3. Select `LevelName/Grid/Solids` (or `Hazards` / `Decor`) in the Hierarchy and paint
+   with the generated tiles using Unity's normal Tile Palette tools.
+4. Save the scene. Painting edits the scene Tilemap; it does not modify the source JSON.
+
+The palette is a standard Unity Grid Palette prefab, not a parallel LevelCraft editor.
+You can replace the generated white sprite with art later while keeping the same Tile
+assets and Tilemap cell layout. Re-importing the same JSON rebuilds the imported
+hierarchy and refreshes the shared palette, so keep hand-authored edits in a separate
+scene or prefab if they must survive re-import.
 
 ## What you get
 
@@ -121,7 +143,7 @@ Hand-rolled minimal parser in `LevelCraftDocument` / `MiniJson` — **not** `Jso
 | Coordinates / category fallback | `node adapters/unity/check-coords.cjs` |
 | Parse links/path / reject intermediate / demo structure | Unity Test Runner → EditMode → `LevelCraftCoordTests` |
 | Headless import smoke | `Unity -batchmode -projectPath <proj> -executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportSmoke` (needs `Fixtures/level-demo.json` under Assets copy) |
-| Tilemap import | Menu import in a 2D project; open Tile Palette on Solids |
+| Tilemap import | Menu import; select `LevelCraftPalette`; paint `Grid/Solids` and save the scene |
 
 ## Phaser parity note
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditor.Tilemaps;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using LevelCraft.Unity;
@@ -26,8 +27,17 @@ namespace LevelCraft.Unity.Editor
             /// <summary>Parent transform; null = scene root.</summary>
             public Transform Parent;
 
-            /// <summary>Optional folder under Assets to store generated Tile assets; null = in-memory only.</summary>
+            /// <summary>Folder under Assets to store generated Tile assets. Required for reloadable editing.</summary>
             public string TileAssetFolder;
+
+            /// <summary>Whether to create/update a native Unity Tile Palette containing the generated tiles.</summary>
+            public bool CreateTilePalette = true;
+
+            /// <summary>Folder under Assets for the generated Tile Palette prefab.</summary>
+            public string TilePaletteFolder = "Assets/LevelCraftTiles";
+
+            /// <summary>Name of the generated Tile Palette prefab.</summary>
+            public string TilePaletteName = "LevelCraftPalette";
         }
 
         /// <summary>
@@ -134,6 +144,9 @@ namespace LevelCraft.Unity.Editor
                 comp.LinkedElements = list.ToArray();
             }
 
+            if (options.CreateTilePalette && tileCache.Count > 0 && !string.IsNullOrEmpty(options.TilePaletteFolder))
+                CreateOrUpdateTilePalette(options, tileCache);
+
             return rootGo;
         }
 
@@ -196,7 +209,7 @@ namespace LevelCraft.Unity.Editor
             var tile = ScriptableObject.CreateInstance<Tile>();
             tile.name = "LC_" + prefix + "_" + (typeName ?? "unknown");
             tile.color = color;
-            tile.sprite = WhiteSprite();
+            tile.sprite = WhiteSprite(assetFolder);
 
             if (!string.IsNullOrEmpty(assetFolder))
             {
@@ -220,8 +233,30 @@ namespace LevelCraft.Unity.Editor
 
         static Sprite _whiteSprite;
 
-        static Sprite WhiteSprite()
+        static Sprite WhiteSprite(string assetFolder = null)
         {
+            if (_whiteSprite != null && string.IsNullOrEmpty(assetFolder)) return _whiteSprite;
+            if (!string.IsNullOrEmpty(assetFolder))
+            {
+                EnsureFolder(assetFolder);
+                var texturePath = (assetFolder.TrimEnd('/') + "/LC_WhiteTexture.asset").Replace('\\', '/');
+                var savedTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+                if (savedTexture == null)
+                {
+                    savedTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                    savedTexture.SetPixel(0, 0, Color.white);
+                    savedTexture.Apply();
+                    savedTexture.name = "LC_WhiteTexture";
+                    AssetDatabase.CreateAsset(savedTexture, texturePath);
+                }
+                var spritePath = (assetFolder.TrimEnd('/') + "/LC_WhiteSprite.asset").Replace('\\', '/');
+                var savedSprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+                if (savedSprite != null) return savedSprite;
+                savedSprite = Sprite.Create(savedTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
+                savedSprite.name = "LC_WhiteSprite";
+                AssetDatabase.CreateAsset(savedSprite, spritePath);
+                return savedSprite;
+            }
             if (_whiteSprite != null) return _whiteSprite;
             var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
             tex.SetPixel(0, 0, Color.white);
@@ -230,6 +265,44 @@ namespace LevelCraft.Unity.Editor
             _whiteSprite = Sprite.Create(tex, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
             _whiteSprite.name = "LevelCraftWhiteSprite";
             return _whiteSprite;
+        }
+
+        static void CreateOrUpdateTilePalette(Options options, Dictionary<string, Tile> tiles)
+        {
+            EnsureFolder(options.TilePaletteFolder);
+            var palettePath = (options.TilePaletteFolder.TrimEnd('/') + "/" + options.TilePaletteName + ".prefab").Replace('\\', '/');
+            var palette = AssetDatabase.LoadAssetAtPath<GameObject>(palettePath);
+            if (palette == null)
+            {
+                palette = GridPaletteUtility.CreateNewPalette(
+                    options.TilePaletteFolder,
+                    options.TilePaletteName,
+                    GridLayout.CellLayout.Rectangle,
+                    GridPalette.CellSizing.Automatic,
+                    new Vector3(options.Scale, options.Scale, 1f),
+                    GridLayout.CellSwizzle.XYZ);
+            }
+            if (palette == null) return;
+
+            var paletteRoot = PrefabUtility.LoadPrefabContents(palettePath);
+            try
+            {
+                var paletteMap = paletteRoot.GetComponentInChildren<Tilemap>();
+                if (paletteMap == null) return;
+                paletteMap.ClearAllTiles();
+                var index = 0;
+                foreach (var tile in tiles.Values)
+                {
+                    paletteMap.SetTile(new Vector3Int(index++, 0, 0), tile);
+                }
+                PrefabUtility.SaveAsPrefabAsset(paletteRoot, palettePath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(paletteRoot);
+            }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
         }
 
         static void EnsureFolder(string assetFolder)

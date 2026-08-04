@@ -3,6 +3,13 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.0] - 2026-08-04
+
+### Fixed
+- Unity adapter now persists generated Tile assets and creates a native Unity Grid
+  Palette prefab, so imported Solids/Hazards/Decor remain paintable after scene reload.
+- Documented the complete Tile Palette edit workflow and re-import boundary.
+
 ## [0.17.2] - 2026-07-25
 
 ### Fixed
