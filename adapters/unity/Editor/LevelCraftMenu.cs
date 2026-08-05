@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Tilemaps;
 using LevelCraft.Unity;
 
 namespace LevelCraft.Unity.Editor
@@ -17,8 +18,17 @@ namespace LevelCraft.Unity.Editor
     /// </remarks>
     public static class LevelCraftMenu
     {
+        #region 常數
+
         const string MenuPath = "Assets/LevelCraft/Import Level JSON…";
         const string MenuPathScene = "GameObject/LevelCraft/Import Level JSON…";
+        const string SmokeOutputFolder = "Assets/LevelCraftSmokeOutput";
+        const string SmokePaletteName = "LevelCraftPaletteSmoke";
+        const string SmokeScenePath = SmokeOutputFolder + "/LevelCraftPaletteSmoke.unity";
+
+        #endregion 常數
+
+        #region 批次驗證
 
         /// <summary>
         /// Headless smoke: parse + build agreed-structure fixture.
@@ -26,6 +36,22 @@ namespace LevelCraft.Unity.Editor
         /// Exit 0 on success, 1 on failure. Looks for Fixtures under Assets/.../LevelCraft.
         /// </summary>
         public static void BatchImportSmoke()
+        {
+            RunBatchImportSmoke(createPalette: false);
+        }
+
+        /// <summary>
+        /// Headless persistence smoke: build a native Grid Palette, paint a Tilemap cell,
+        /// save/reopen the scene, and verify the persisted Tile reference.
+        /// Unity: <c>-executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportPaletteSmoke</c>.
+        /// Writes disposable evidence under <c>Assets/LevelCraftSmokeOutput</c>.
+        /// </summary>
+        public static void BatchImportPaletteSmoke()
+        {
+            RunBatchImportSmoke(createPalette: true);
+        }
+
+        static void RunBatchImportSmoke(bool createPalette)
         {
             try
             {
@@ -47,12 +73,28 @@ namespace LevelCraft.Unity.Editor
                     return;
                 }
 
+                if (createPalette)
+                {
+                    // CI-only path: start clean so stale assets cannot make the smoke pass.
+                    EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                    if (AssetDatabase.IsValidFolder(SmokeOutputFolder) &&
+                        !AssetDatabase.DeleteAsset(SmokeOutputFolder))
+                    {
+                        throw new System.InvalidOperationException(
+                            "Failed to reset disposable smoke folder: " + SmokeOutputFolder);
+                    }
+                    AssetDatabase.CreateFolder("Assets", "LevelCraftSmokeOutput");
+                }
+
                 var root = LevelCraftLevelBuilder.Build(doc, new LevelCraftLevelBuilder.Options
                 {
                     Scale = 1f,
-                    // Smoke tests must not mutate the host project's palette assets.
-                    TileAssetFolder = null,
-                    CreateTilePalette = false,
+                    // The basic smoke remains non-mutating. The explicit palette smoke
+                    // writes to a dedicated disposable folder and exercises the real path.
+                    TileAssetFolder = createPalette ? SmokeOutputFolder : null,
+                    TilePaletteFolder = SmokeOutputFolder,
+                    TilePaletteName = SmokePaletteName,
+                    CreateTilePalette = createPalette,
                 });
                 if (root == null)
                 {
@@ -64,11 +106,24 @@ namespace LevelCraft.Unity.Editor
                 var grid = root.GetComponentInChildren<UnityEngine.Grid>();
                 var maps = root.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>();
                 var elements = root.GetComponentsInChildren<LevelCraftElement>();
+                var hasGrid = grid != null;
+                var mapCount = maps.Length;
+                var elementCount = elements.Length;
+                if (!hasGrid || mapCount != 3 || elementCount == 0)
+                    throw new System.InvalidOperationException(
+                        $"Unexpected hierarchy: grid={hasGrid} tilemaps={mapCount} " +
+                        $"LevelCraftElement={elementCount}");
+
+                var paletteEvidence = "palette=skipped";
+                if (createPalette)
+                    paletteEvidence = ValidatePalettePersistence(root);
+
                 Debug.Log(
                     $"[LevelCraft] BatchImportSmoke OK name={doc.Name} world={doc.WorldWUnit}x{doc.WorldHUnit} " +
-                    $"elements={doc.Elements.Count} grid={(grid != null)} tilemaps={maps.Length} " +
-                    $"LevelCraftElement={elements.Length}");
-                UnityEngine.Object.DestroyImmediate(root);
+                    $"elements={doc.Elements.Count} grid={hasGrid} tilemaps={mapCount} " +
+                    $"LevelCraftElement={elementCount} {paletteEvidence}");
+                if (!createPalette)
+                    UnityEngine.Object.DestroyImmediate(root);
                 EditorApplication.Exit(0);
             }
             catch (System.Exception ex)
@@ -76,6 +131,64 @@ namespace LevelCraft.Unity.Editor
                 Debug.LogError("[LevelCraft] BatchImportSmoke FAILED: " + ex);
                 EditorApplication.Exit(1);
             }
+        }
+
+        static string ValidatePalettePersistence(GameObject root)
+        {
+            var palettePath = SmokeOutputFolder + "/" + SmokePaletteName + ".prefab";
+            var paletteAsset = AssetDatabase.LoadAssetAtPath<GameObject>(palettePath);
+            if (paletteAsset == null)
+                throw new System.InvalidOperationException("Palette prefab was not created: " + palettePath);
+
+            TileBase paletteTile = null;
+            var paletteRoot = PrefabUtility.LoadPrefabContents(palettePath);
+            try
+            {
+                var paletteMap = paletteRoot.GetComponentInChildren<UnityEngine.Tilemaps.Tilemap>();
+                if (paletteMap == null)
+                    throw new System.InvalidOperationException("Palette prefab has no Tilemap: " + palettePath);
+                foreach (var cell in paletteMap.cellBounds.allPositionsWithin)
+                {
+                    paletteTile = paletteMap.GetTile(cell);
+                    if (paletteTile != null) break;
+                }
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(paletteRoot);
+            }
+
+            if (paletteTile == null || !AssetDatabase.Contains(paletteTile))
+                throw new System.InvalidOperationException("Palette has no persisted Tile asset.");
+
+            var tilePath = AssetDatabase.GetAssetPath(paletteTile);
+            var solids = root.transform.Find("Grid/Solids")?.GetComponent<UnityEngine.Tilemaps.Tilemap>();
+            if (solids == null)
+                throw new System.InvalidOperationException("Imported hierarchy has no Grid/Solids Tilemap.");
+
+            var paintCell = new Vector3Int(101, 101, 0);
+            solids.SetTile(paintCell, paletteTile);
+            var rootName = root.name;
+            if (!EditorSceneManager.SaveScene(SceneManager.GetActiveScene(), SmokeScenePath))
+                throw new System.InvalidOperationException("Failed to save smoke scene: " + SmokeScenePath);
+
+            var reopened = EditorSceneManager.OpenScene(SmokeScenePath, OpenSceneMode.Single);
+            GameObject reloadedRoot = null;
+            foreach (var sceneRoot in reopened.GetRootGameObjects())
+            {
+                if (sceneRoot.name != rootName) continue;
+                reloadedRoot = sceneRoot;
+                break;
+            }
+
+            var reloadedSolids = reloadedRoot?.transform
+                .Find("Grid/Solids")?.GetComponent<UnityEngine.Tilemaps.Tilemap>();
+            var reloadedTile = reloadedSolids?.GetTile(paintCell);
+            if (reloadedTile == null || AssetDatabase.GetAssetPath(reloadedTile) != tilePath)
+                throw new System.InvalidOperationException(
+                    "Painted Tile reference did not survive scene reload. Expected " + tilePath);
+
+            return $"palette={palettePath} persistedTile={tilePath} scene={SmokeScenePath}";
         }
 
         static string FindFixturePath()
@@ -97,6 +210,10 @@ namespace LevelCraft.Unity.Editor
                 return f;
             return null;
         }
+
+        #endregion 批次驗證
+
+        #region 匯入選單
 
         /// <summary>Import from disk into the active scene.</summary>
         [MenuItem(MenuPath, false, 2000)]
@@ -182,5 +299,7 @@ namespace LevelCraft.Unity.Editor
 
             return root;
         }
+
+        #endregion 匯入選單
     }
 }

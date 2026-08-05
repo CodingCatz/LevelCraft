@@ -2,7 +2,8 @@
     "name": "LevelCraft.Unity.Editor",
     "rootNamespace": "LevelCraft.Unity.Editor",
     "references": [
-        "LevelCraft.Unity.Runtime"
+        "LevelCraft.Unity.Runtime",
+        "Unity.2D.Tilemap.Editor"
     ],
     "includePlatforms": [
         "Editor"

@@ -15,9 +15,15 @@ Assets/LevelCraft/          ← rename/move as you like
 
 **Important:** EditMode tests must stay under `Tests/Editor/` and reference the Editor
 assembly. Putting them under bare `Tests/` compiles them as **runtime** code, which
-cannot see `LevelCraft.Unity.Editor` (CS0234).
+cannot see `LevelCraft.Unity.Editor` (CS0234). If you copy `Tests/`, install Unity's
+official **Test Framework** package; otherwise omit that optional folder.
 
-Requires **Unity 2021.3 LTS+** with **2D Tilemap** (`com.unity.2d.tilemap`, included in 2D template).
+Requires **Unity 2021.3 LTS+** with Unity's official **2D Tilemap Editor** package
+(`com.unity.2d.tilemap`, included in the 2D template). In a blank project, install it
+from **Window → Package Manager → Unity Registry → 2D Tilemap Editor** before copying
+the adapter. The package is an official Unity dependency, not a third-party package;
+the Editor assembly definition references `Unity.2D.Tilemap.Editor` explicitly so a
+missing package fails clearly instead of silently disabling Palette support.
 
 ## Import workflow (recommended)
 
@@ -143,6 +149,7 @@ Hand-rolled minimal parser in `LevelCraftDocument` / `MiniJson` — **not** `Jso
 | Coordinates / category fallback | `node adapters/unity/check-coords.cjs` |
 | Parse links/path / reject intermediate / demo structure | Unity Test Runner → EditMode → `LevelCraftCoordTests` |
 | Headless import smoke | `Unity -batchmode -projectPath <proj> -executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportSmoke` (needs `Fixtures/level-demo.json` under Assets copy) |
+| Headless Palette persistence smoke | `Unity -batchmode -projectPath <disposable-proj> -executeMethod LevelCraft.Unity.Editor.LevelCraftMenu.BatchImportPaletteSmoke` (recreates `Assets/LevelCraftSmokeOutput`, opens an empty scene, paints a cell, saves/reopens, and checks the Tile asset reference; use only in CI/a disposable project) |
 | Tilemap import | Menu import; select `LevelCraftPalette`; paint `Grid/Solids` and save the scene |
 
 ## Phaser parity note

@@ -3,6 +3,15 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.1] - 2026-08-05
+
+### Fixed
+- Unity Editor asmdef now explicitly references the official `Unity.2D.Tilemap.Editor`
+  assembly required by `GridPaletteUtility`, fixing CS0234 in clean projects.
+- Added a headless Palette persistence smoke that creates the native Palette, paints a
+  Tilemap cell, saves/reopens the scene, and verifies the persisted Tile asset reference.
+- Documented that blank Unity projects must install the official 2D Tilemap Editor package.
+
 ## [0.18.0] - 2026-08-04
 
 ### Fixed

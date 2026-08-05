@@ -123,7 +123,7 @@ const level = loadLevelCraft(scene, json, { unitPx: 32 });
 
 ```
 // Unity：Assets → LevelCraft → Import Level JSON…
-// 複製 adapters/unity/ 進專案 Assets/ 即可（需 2D Tilemap）
+// 先安裝 Unity 官方 2D Tilemap Editor package，再複製 adapters/unity/ 進 Assets/
 ```
 
 ### 從其他遊戲關卡匯入（實驗）
