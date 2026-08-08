@@ -3,6 +3,17 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.2] - 2026-08-09
+
+### Changed
+- 清除 `index.html` 內 2 處手寫固定 px 小數，對齊 2026-08-07 CEO 裁定的跨專案 UI 規範
+  （共用 skill `design-antipatterns` 正向鐵則 #13 ／ 偵測規則 `fractional-px`）：
+  `header .title` 字距 `.3px` → `0.023em`（基準 body 13px）、
+  `.sec h3` 字距 `.8px` → `0.073em`（基準同區塊 font-size 11px）。
+  字距改用 `em` 而非進位成 `1px`——`em` 把次像素交給瀏覽器計算，是規範明文允許的作法，
+  且維持原本的視覺鬆緊；進位成 `1px` 會把字距放大 2～3 倍。
+  驗證：`node ~/dotfiles/tools/scan-fractional-px.mjs --only LevelCraft` → `0 處`。
+
 ## [0.18.1] - 2026-08-05
 
 ### Fixed

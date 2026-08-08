@@ -21,7 +21,8 @@
   }
   header { grid-area: top; display: flex; align-items: center; gap: 8px; padding: 0 12px;
     background: var(--panel); border-bottom: 1px solid var(--line); }
-  header .title { font-weight: 700; letter-spacing: .3px; color: var(--accent); }
+  /* 字距用 em：基準是 body 的 13px */
+  header .title { font-weight: 700; letter-spacing: 0.023em; color: var(--accent); }
   header .sp { flex: 1; }
   header input.name { background: var(--panel2); border: 1px solid var(--line); color: var(--fg);
     border-radius: 6px; padding: 4px 8px; width: 160px; }
@@ -40,7 +41,7 @@
   #left { grid-area: left; border-right: 1px solid var(--line); }
   #right { grid-area: right; border-left: 1px solid var(--line); }
   .sec { padding: 10px 12px; border-bottom: 1px solid var(--line); }
-  .sec h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .sec h3 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.073em; color: var(--muted); }
   .row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
   .row label { color: var(--muted); width: 62px; flex: none; }
   .row input { width: 100%; min-width: 0; }
