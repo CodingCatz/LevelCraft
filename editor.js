@@ -27,7 +27,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.17.0';
+const VERSION = '0.18.3';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -607,10 +607,14 @@ window.addEventListener('keydown', ev => {
   }
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); deleteSel(); return; }
   const step = ev.shiftKey ? (S.snap || 1) * 5 : (S.snap || 1);
-  if (ev.key === 'ArrowLeft')  { pushUndo(); e.x = round4(e.x - step); renderAll(); autosave(); ev.preventDefault(); }
-  if (ev.key === 'ArrowRight') { pushUndo(); e.x = round4(e.x + step); renderAll(); autosave(); ev.preventDefault(); }
-  if (ev.key === 'ArrowUp')    { pushUndo(); e.y = round4(e.y - step); renderAll(); autosave(); ev.preventDefault(); }
-  if (ev.key === 'ArrowDown')  { pushUndo(); e.y = round4(e.y + step); renderAll(); autosave(); ev.preventDefault(); }
+  const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+  if (delta) {
+    // 與拖曳一致：多選與群組成員整組微調，不只動主選取。
+    const ids = new Set(expandGroupIds(selectionIds()));
+    pushUndo();
+    for (const x of S.els) if (ids.has(x.id)) { x.x = round4(x.x + delta[0]); x.y = round4(x.y + delta[1]); }
+    renderAll(); autosave(); ev.preventDefault();
+  }
 });
 window.addEventListener('keyup', ev => { if (ev.code === 'Space') spaceDown = false; });
 
@@ -907,7 +911,8 @@ function renderLinkDlg() {
     links.appendChild(row);
   }
   const targetSelect = $('#tbLinkSel');
-  targetSelect.innerHTML = `<option value="">選目標…</option>${S.els.filter(item => item.id !== e.id && !(e.links || []).includes(item.id)).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} (${escapeHtml(item.type)})</option>`).join('')}`;
+  // spawn 匯出時收進頂層 spawnUnit、不在 elements 裡，連過去會變成懸空參照。
+  targetSelect.innerHTML = `<option value="">選目標…</option>${S.els.filter(item => item.id !== e.id && item.type !== 'spawn' && !(e.links || []).includes(item.id)).map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} (${escapeHtml(item.type)})</option>`).join('')}`;
 }
 
 function openLinkDlg() {
@@ -965,9 +970,19 @@ $('#tdSave').onclick = () => {
   const category = normalizeGameCategory($('#tdCategory').value);
   const movable = $('#tdMovable').checked;
   const description = $('#tdDescription').value.trim();
+  // 驗證全在 pushUndo 之前，失敗的儲存不留空 undo。
+  if (S.types.some(t => t !== editingType && t.name === name)) { alert('類型名稱重複'); return; }
+  const inUse = editingType ? S.els.filter(e => e.type === editingType.name) : [];
+  if (editingType && shape !== editingType.shape && inUse.length) {
+    alert(`有 ${inUse.length} 個元素正在使用此類型，不能改形狀（矩形與點的資料欄位不同）`); return;
+  }
   pushUndo();
   if (editingType) {
-    if (name !== editingType.name && S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
+    // 改名要連帶元素與目前選用類型，否則元素會變成找不到定義的孤兒（失去顏色與 category）。
+    if (name !== editingType.name) {
+      for (const e of inUse) e.type = name;
+      if (S.activeType === editingType.name) S.activeType = name;
+    }
     editingType.name = name;
     editingType.color = color;
     editingType.shape = shape;
@@ -975,7 +990,6 @@ $('#tdSave').onclick = () => {
     editingType.movable = movable;
     editingType.description = description;
   } else {
-    if (S.types.some(t => t.name === name)) { alert('類型名稱重複'); return; }
     S.types.push({ name, color, shape, category, movable, description });
     S.activeType = name;
   }
@@ -985,8 +999,28 @@ $('#tdSave').onclick = () => {
 // =====================================================================
 //  匯入 / 匯出
 // =====================================================================
+// 手寫或外部工具產的 JSON 常缺 id／撞 id／連到不存在的目標；id 是選取、群組、links 的唯一鍵，
+// 壞掉會讓「點 A 選到 B」或匯出懸空 targetId。純函式（不碰 S），供 check-import.cjs 直接驗。
+function normalizeElementRefs(els) {
+  const seen = new Set();
+  let n = 1;
+  for (const e of els) {
+    let id = typeof e.id === 'string' && e.id.trim() ? e.id.trim() : '';
+    if (!id || seen.has(id)) {
+      const prefix = String(e.type || 'el');
+      do { id = `${prefix}-${n++}`; } while (seen.has(id) || els.some(x => x !== e && x.id === id));
+    }
+    e.id = id; seen.add(id);
+  }
+  for (const e of els) {
+    e.links = [...new Set((e.links || []).filter(id => id !== e.id && seen.has(id)))];
+  }
+  return els;
+}
+
 function serialize(includeEditorState = false) {
   const spawn = singletonElement('spawn');
+  const exportedIds = new Set(S.els.filter(e => e.type !== 'spawn').map(e => e.id));
   const level = {
     format: FORMAT,
     name: S.name,
@@ -1011,7 +1045,8 @@ function serialize(includeEditorState = false) {
       if (e.kind === 'rect') { o.wUnit = e.w; o.hUnit = e.h; }
       if (e.description) o.description = e.description;
       if (e.props && Object.keys(e.props).length) o.props = { ...e.props };
-      if (e.links && e.links.length) o.links = [...e.links];
+      const links = (e.links || []).filter(id => exportedIds.has(id));
+      if (links.length) o.links = links;
       if (e.path?.length) o.path = e.path.map(p => ({ x: p.x, y: p.y }));
       return o;
     }),
@@ -1055,7 +1090,7 @@ function deserialize(d) {
   // 世界尺寸一律收斂成正有限數；壞值會讓縮放算出 NaN 而畫面全白。
   const posNum = (v, fallback) => (Number.isFinite(+v) && +v > 0 ? +v : fallback);
   S.world = { w: posNum(d.world?.wUnit, 80), h: posNum(d.world?.hUnit, 20) };
-  S.snap = d.snap ?? 0.5;
+  S.snap = Number.isFinite(+d.snap) && +d.snap >= 0 ? +d.snap : 0.5;
   if (Array.isArray(d.types) && d.types.length) {
     S.types = d.types.map(t => ({
       name: t.name,
@@ -1073,6 +1108,7 @@ function deserialize(d) {
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
     description: e.description || '', props: e.props || {}, links: e.links || [], path: Array.isArray(e.path) ? e.path.map(p => ({ x: p.x ?? 0, y: p.y ?? 0 })) : [],
   }));
+  normalizeElementRefs(S.els);
   S.groups = d.editor?.groups || [];
   normalizeGroups();
   normalizeSingletonNodes();
@@ -1158,6 +1194,9 @@ $('#btnNew').onclick = () => {
   pushUndo();
   S.name = 'level-01'; S.world = { w: 80, h: 20 }; S.snap = 0.5;
   S.els = [{ id: 'spawn-0', kind: 'point', type: 'spawn', x: 3, y: 15, description: '', props: {}, links: [] }]; clearSelection(); uid = 1;
+  S.groups = []; pathEditingId = null; // 舊群組與路徑編輯目標都指向已清掉的元素
+  if (S.tool === 'path') S.tool = typeShape(S.activeType) === 'rect' ? 'rect' : 'marker';
+  fitViewToWorld();
   syncInputs(); renderAll(); autosave();
 };
 

@@ -113,5 +113,35 @@ if (fs.existsSync(sampleLevel)) {
   console.log("SKIP  category import-compat (sample level 不存在)");
 }
 
+// id／links 正規化：缺 id、撞 id、懸空與自連都要收斂，否則選取與匯出 targetId 會錯。
+{
+  const src = fs.readFileSync(path.join(__dirname, "editor.js"), "utf8");
+  const m = src.match(/function normalizeElementRefs\(els\) \{[\s\S]*?\n\}/);
+  if (!m) { failed++; console.log("FAIL  normalizeElementRefs 抽不到（改名了就同步這裡）"); }
+  else {
+    const norm = new Function("return (" + m[0].replace("function normalizeElementRefs", "function") + ")")();
+    const els = norm([
+      { id: "a", type: "switch", links: ["b", "ghost", "a", "b"] },
+      { id: "a", type: "door" },            // 撞號
+      { type: "key" },                       // 缺 id
+      { id: "  ", type: "key", links: ["a"] }, // 空白 id
+      { id: "b", type: "door" },
+    ]);
+    const ids = els.map(e => e.id);
+    const unique = new Set(ids).size === ids.length && ids.every(id => typeof id === "string" && id);
+    const linksOk = JSON.stringify(els[0].links) === '["b"]' && JSON.stringify(els[3].links) === '["a"]';
+    if (unique && linksOk && ids[0] === "a" && ids[4] === "b") console.log("PASS  element refs        缺/撞 id 補號、懸空/自連/重複 links 清除");
+    else { failed++; console.log(`FAIL  element refs  ids=${JSON.stringify(ids)} links0=${JSON.stringify(els[0].links)}`); }
+  }
+}
+
+// 版號顯示 SSOT：editor.js VERSION 必須等於 CHANGELOG 最新條目（v0.18.x 曾漂在 0.17.0 沒人發現）。
+{
+  const ver = /const VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, "editor.js"), "utf8"))?.[1];
+  const top = /^## \[(\d+\.\d+\.\d+[^\]]*)\]/m.exec(fs.readFileSync(path.join(__dirname, "CHANGELOG.md"), "utf8"))?.[1];
+  if (ver && top && ver === top) console.log(`PASS  version sync        editor.js = CHANGELOG = ${ver}`);
+  else { failed++; console.log(`FAIL  version sync  editor.js=${ver} CHANGELOG=${top}`); }
+}
+
 console.log(failed ? `\n${failed} 個錯誤（共 ${ran} 檔 + category 案）` : `\n全部通過（${ran} 檔 + category 案）`);
 process.exit(failed ? 1 : 0);
