@@ -140,6 +140,21 @@ node check-import.cjs
 
 零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋。`examples/celeste-import/data/` 未抽取時該組自動略過。
 
+```bash
+node check-ui.cjs
+```
+
+瀏覽器 UI 回歸自檢，同樣零依賴、不用 `npm install`：需要 **Node 22+**（內建 WebSocket）與本機的 Chrome／Edge／Chromium（自動找常見安裝位置，或用 `CHROME_PATH` 指定執行檔）。
+腳本自己開一個本機靜態伺服器與無頭瀏覽器，送真實滑鼠／鍵盤事件、點真實按鈕，再讀頁面狀態 `S` 驗證：工具箱條件渲染、群組選取與整組移動、類型改名／禁改形狀／重名不留 undo、連動目標與匯出 links、匯入補號／中間檔指路／框住世界、undo／redo。
+
+退出碼：`0` 全過、`1` 有案例失敗、`2` 找不到瀏覽器（印 `SKIP`，**不算通過**）。
+
+```bash
+node check-ui-rollback-probe.cjs
+```
+
+回滾探針：把 `index.html`／`editor.js` 複製到暫存目錄，每次只弄壞一處出貨行為（群組互斥、連動排除出生點、匯入框住世界、類型改名連帶、重名驗證先於 undo），確認 `check-ui.cjs` 在對應案例轉紅；工作區不會被改動。改了 `editor.js` 的那幾行時跑一次，軸抽不到目標會直接 FAIL。
+
 ## 版本
 
 見 [CHANGELOG.md](CHANGELOG.md)。遵循 SemVer 2.0.0。

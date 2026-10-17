@@ -3,6 +3,7 @@
  * 共通語言＝「單位」(unit)；1 單位等於多少 px 由使用你 JSON 的遊戲自行定義。
  * 座標系：Y 向下（y 越大越靠下），矩形以左上角 (xUnit,yUnit) 為基準。
  */
+
 'use strict';
 
 // ---------- 預設類型（標籤＋顏色＋幾何 shape＋遊戲語意 category）----------
@@ -27,7 +28,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.18.3';
+const VERSION = '0.18.4';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 

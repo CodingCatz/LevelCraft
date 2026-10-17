@@ -3,6 +3,16 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.4] - 2026-10-18
+
+工單 `2026-10-12-levelcraft-ui-regression-harness`：編輯器 UI 行為原本全靠人在瀏覽器手測，改壞了沒有紅燈；下一張 editor.js 模組化單需要這道網才能安全重構。
+
+### Added
+- **`check-ui.cjs` 瀏覽器 UI 回歸自檢**（零依賴，Node 22+ ＋本機 Chrome／Edge）：自起靜態伺服器與無頭瀏覽器，經 DevTools Protocol 送真實滑鼠／鍵盤事件，11 個案例涵蓋工具箱條件渲染（無選取／單選／多選、群組互斥、只有 movable 類型出現編輯路徑）、群組（點成員選全組、拖曳與方向鍵整組移動、解散不動位置）、類型（改名連帶、使用中禁改形狀、重名不留 undo）、連動（目標不含出生點、匯出不含懸空 links）、匯入（缺／撞 id 補號、中間檔擋下指路、成功後框住世界）、undo／redo。找不到瀏覽器時印 `SKIP` 並以退出碼 2 結束，不冒充通過。
+- **`check-ui-rollback-probe.cjs`**：在暫存複本上逐一弄壞 5 處出貨行為，確認 UI 自檢在對應案例轉紅、未突變複本全綠，工作區 git status 前後不變。
+
+### Known
+- 介面目前沒有「編輯既有類型」的入口（`openTypeDlg` 只從「新增類型」以 `null` 呼叫），類型改名與禁改形狀只能經由程式呼叫對話框；UI 自檢直接呼叫 `openTypeDlg` 驗對話框邏輯，入口本身待另開單補。
 ## [0.18.3] - 2026-10-12
 
 收尾性修復：引擎轉接器（v0.15–v0.18）落地後盤點編輯器結構缺口，修掉會讓匯出資料靜默出錯的幾條。
