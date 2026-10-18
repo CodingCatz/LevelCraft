@@ -314,6 +314,39 @@ const CASES = [
     await clickButton('ioClose');
   }],
 
+  ['縮放：大世界匯入後整個可見；80×20 預設世界滾輪下限仍為 0.15', async () => {
+    const worldVisible = () => ev(`(() => { const r = cw.getBoundingClientRect(), a = toScreen(0, 0), b = toScreen(S.world.w, S.world.h);
+      return a.x >= 0 && a.y >= 0 && b.x <= r.width && b.y <= r.height; })()`);
+    const notes = [];
+    await freshPage(LEVEL);
+    await clickButton('btnImport');
+    await ev(`ioText.value = ${JSON.stringify(JSON.stringify({ format: 'levelcraft/v1', name: 'huge', world: { wUnit: 2000, hUnit: 600 }, elements: [] }))}; true`);
+    await clickButton('ioLoad');
+    assert.equal(await worldVisible(), true, `2000×600 世界要整個可見（zoom ${await ev('S.view.zoom')}）`);
+    notes.push(`2000×600 zoom=${(await ev('S.view.zoom')).toFixed(4)}`);
+    // 本機有抽取資料時，用真的最大關卡走「選擇檔案」匯入（data/ 已 gitignore，沒有就只跑上面的替代世界）
+    const dir = path.join(ROOT, 'examples', 'celeste-import', 'data', 'levelcraft');
+    if (fs.existsSync(dir)) {
+      const levels = fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => ({ f, w: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).world }));
+      const pick = [levels.reduce((a, b) => (b.w.wUnit * b.w.hUnit > a.w.wUnit * a.w.hUnit ? b : a)), levels.reduce((a, b) => (b.w.hUnit > a.w.hUnit ? b : a))];
+      const { root } = await cdp.send('DOM.getDocument');
+      for (const { f, w } of pick) {
+        await clickButton('btnImport');
+        const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: '#ioFile' });
+        await cdp.send('DOM.setFileInputFiles', { nodeId, files: [path.join(dir, f)] });
+        await waitFor(() => ev(`!ioDlg.open`), 5000, `${f} 匯入`);
+        assert.equal(await worldVisible(), true, `${f}（${w.wUnit}×${w.hUnit}）要整個可見（zoom ${await ev('S.view.zoom')}）`);
+        notes.push(`${f} ${w.wUnit}×${w.hUnit} zoom=${(await ev('S.view.zoom')).toFixed(4)}`);
+      }
+    } else notes.push('Celeste 抽取資料不存在，只驗替代世界');
+    await freshPage(LEVEL);
+    await ev(`S.world = { w: 80, h: 20 }; fitViewToWorld(); draw(); true`);
+    const center = await unitToPage(20, 10);
+    for (let i = 0; i < 60; i++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: center.x, y: center.y, deltaX: 0, deltaY: 120 });
+    assert.equal(await ev(`S.view.zoom`), 0.15, '80×20 世界滾輪縮小要停在 0.15');
+    return notes.join('；');
+  }],
+
   ['undo／redo 基本來回', async () => {
     await freshPage(LEVEL);
     const n = await ev(`S.els.length`);
@@ -357,7 +390,7 @@ async function main() {
     await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: 'try { localStorage.clear(); } catch {}' });
     console.log(`瀏覽器 ${path.basename(browser)}；服務目錄 ${ROOT}`);
     for (const [name, run] of CASES) {
-      try { await run(); console.log(`PASS  ${name}`); }
+      try { const note = await run(); console.log(`PASS  ${name}${note ? `\n      ${note}` : ''}`); }
       catch (err) { failed++; console.log(`FAIL  ${name}\n      ${err.message.split('\n').join('\n      ')}`); }
     }
     ws.close();

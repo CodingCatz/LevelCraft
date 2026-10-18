@@ -135,6 +135,27 @@ if (fs.existsSync(sampleLevel)) {
   }
 }
 
+// 縮放下限自適應：小世界維持 0.15；大世界的下限要低到「裝滿畫面」的 zoom 以下，否則 fitViewToWorld 被卡住、世界裝不進畫面。
+{
+  const src = fs.readFileSync(path.join(__dirname, "editor.js"), "utf8");
+  const fit = src.match(/function fitZoomFor\([^)]*\) \{[\s\S]*?\n\}/);
+  const min = src.match(/function minZoomFor\([^)]*\) \{[\s\S]*?\n\}/);
+  if (!fit || !min) { failed++; console.log("FAIL  zoom floor 抽不到 fitZoomFor／minZoomFor（改名了就同步這裡）"); }
+  else {
+    const { fitZoomFor, minZoomFor } = new Function(`${fit[0]}\n${min[0]}\nreturn { fitZoomFor, minZoomFor };`)();
+    const view = [1000, 700, 40];
+    const small = minZoomFor(80, 20, 20, ...view);
+    const bigFit = fitZoomFor(2000, 600, 20, ...view), bigMin = minZoomFor(2000, 600, 20, ...view);
+    const degenerate = minZoomFor(80, 20, 20, 0, 0, 40);
+    const problems = [];
+    if (small !== 0.15) problems.push(`80×20 下限應為 0.15，得 ${small}`);
+    if (!(bigMin < 0.15 && bigMin > 0 && bigMin <= bigFit)) problems.push(`2000×600 下限 ${bigMin} 必須介於 0 與裝滿畫面的 ${bigFit} 之間`);
+    if (degenerate !== 0.15) problems.push(`畫面尺寸 0 時應退回 0.15，得 ${degenerate}`);
+    if (!problems.length) console.log(`PASS  zoom floor          80×20 → 0.15；2000×600 → ${bigMin.toFixed(4)}（裝滿 ${bigFit.toFixed(4)}）`);
+    else { failed++; console.log(`FAIL  zoom floor  ${problems.join("；")}`); }
+  }
+}
+
 // 版號顯示 SSOT：editor.js VERSION 必須等於 CHANGELOG 最新條目（v0.18.x 曾漂在 0.17.0 沒人發現）。
 {
   const ver = /const VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(__dirname, "editor.js"), "utf8"))?.[1];

@@ -28,7 +28,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.18.5';
+const VERSION = '0.18.6';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -100,7 +100,22 @@ const icon = (name, className = '') => {
 
 // ---------- 座標轉換 ----------
 const scale = () => S.ppu * S.view.zoom;
-function clampZoom(z) { return Math.min(8, Math.max(0.15, z)); }
+const ZOOM_MAX = 8, FIT_PAD_PX = 40;
+/** 剛好把整個世界（四邊各留 pad px）裝進畫面的 zoom。純函式，check-import.cjs 直接抽出來驗。 */
+function fitZoomFor(worldW, worldH, ppu, viewW, viewH, pad) {
+  return Math.min((viewW - pad * 2) / (worldW * ppu), (viewH - pad * 2) / (worldH * ppu));
+}
+/** 縮放下限：小世界維持 0.15；大世界放寬到裝滿畫面的 zoom × 0.9，讓整個世界看得到。純函式。 */
+function minZoomFor(worldW, worldH, ppu, viewW, viewH, pad) {
+  const fit = fitZoomFor(worldW, worldH, ppu, viewW, viewH, pad);
+  return Number.isFinite(fit) && fit > 0 ? Math.min(0.15, fit * 0.9) : 0.15;
+}
+// 滾輪與 fitViewToWorld 共用同一個下限；每次即時算，世界 W/H 或 px/單位改了自然跟著變。
+function zoomFloor() {
+  const r = cw.getBoundingClientRect();
+  return minZoomFor(S.world.w, S.world.h, S.ppu, r.width, r.height, FIT_PAD_PX);
+}
+function clampZoom(z) { return Math.min(ZOOM_MAX, Math.max(zoomFloor(), z)); }
 function toScreen(ux, uy) { return { x: ux * scale() + S.view.x, y: uy * scale() + S.view.y }; }
 function toUnit(sx, sy) { return { x: (sx - S.view.x) / scale(), y: (sy - S.view.y) / scale() }; }
 function snapU(v) { return S.snap > 0 ? Math.round(v / S.snap) * S.snap : v; }
@@ -823,11 +838,7 @@ function focusOn(e) {
 // 只要使用者先平移／縮放過，關卡就落在畫面外，看起來像「按了沒反應」。
 function fitViewToWorld() {
   const r = cw.getBoundingClientRect();
-  const pad = 40;
-  S.view.zoom = clampZoom(Math.min(
-    (r.width - pad * 2) / (S.world.w * S.ppu),
-    (r.height - pad * 2) / (S.world.h * S.ppu),
-  ));
+  S.view.zoom = clampZoom(fitZoomFor(S.world.w, S.world.h, S.ppu, r.width, r.height, FIT_PAD_PX));
   const s = scale();
   S.view.x = (r.width - S.world.w * s) / 2;
   S.view.y = (r.height - S.world.h * s) / 2;

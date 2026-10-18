@@ -43,7 +43,7 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 | 操作 | 鍵 |
 |------|----|
 | 平移畫布 | 中鍵拖曳 或 空白鍵 + 左鍵拖曳 |
-| 縮放（以游標為中心） | 滾輪 |
+| 縮放（以游標為中心；下限 15%，世界大到裝不下時放寬到能看見全貌） | 滾輪 |
 | 矩形／標記工具 | R / M |
 | 刪除選取 | `Delete` / `Backspace` |
 | 快速刪除游標下元素 | 右鍵 |
@@ -138,7 +138,7 @@ Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線
 node check-import.cjs
 ```
 
-零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋。`examples/celeste-import/data/` 未抽取時該組自動略過。
+零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋；另驗 id／links 正規化、縮放下限（小世界 0.15、大世界低於裝滿畫面的 zoom）與版號同步。`examples/celeste-import/data/` 未抽取時該組自動略過。
 
 ```bash
 node check-ui.cjs

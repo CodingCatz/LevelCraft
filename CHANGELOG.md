@@ -3,6 +3,16 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.6] - 2026-10-18
+
+工單 `2026-10-12-levelcraft-adaptive-zoom-min`。
+
+### Fixed
+- **大世界匯入後裝不進畫面**：`clampZoom` 寫死下限 0.15，Celeste 824 關中有 11 關（1.3%）匯入後 `fitViewToWorld` 被卡住。下限改為 `min(0.15, 裝滿畫面的 zoom × 0.9)`：80×20 這類小世界手感不變，大世界可縮到看見全貌。純函式 `fitZoomFor`／`minZoomFor` 由 `fitViewToWorld` 與滾輪共用（每次即時算，世界 W/H 或 px/單位改了自然跟著變），上限 8 不動。
+  實測（無頭 Chrome，1400×900 視窗）：2000×600 → zoom 0.0201；最大的 `celeste__LostLevels__lvl_j-16`（768×340）→ 0.0523；最高的 `lvl_j-19`（40×578）→ 0.0572，三者整個世界都在畫面內。
+
+### Tests
+- `check-import.cjs` 新增 zoom floor 案（80×20 → 0.15、2000×600 的下限低於裝滿畫面的 zoom、畫面尺寸 0 不出 NaN）；`check-ui.cjs` 新增大世界匯入（含本機 Celeste 最大與最高關卡，經「選擇檔案」匯入）與 80×20 滾輪下限案；回滾探針新增「縮放下限自適應」軸（共 8 條）。
 ## [0.18.5] - 2026-10-18
 
 工單 `2026-10-12-levelcraft-block-delete-type-in-use`（CEO 2026-10-12 定案：刪除使用中類型直接禁止）。

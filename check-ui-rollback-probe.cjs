@@ -31,6 +31,8 @@ const AXES = [
     'if (inUse) { alert(typeInUseMessage(inUse)); return; }', ''],
   ['刪除放置類型後改選', '刪掉目前放置的節點類型後節點工具仍正常',
     'if (S.activeType === editingType.name) {', 'if (false) {'],
+  ['縮放下限自適應', '大世界匯入後整個可見',
+    'return Number.isFinite(fit) && fit > 0 ? Math.min(0.15, fit * 0.9) : 0.15;', 'return 0.15;'],
   ['重名驗證在 pushUndo 之前', '名稱重複擋下且不留 undo',
     "if (S.types.some(t => t !== editingType && t.name === name)) { alert('類型名稱重複'); return; }",
     "pushUndo(); if (S.types.some(t => t !== editingType && t.name === name)) { alert('類型名稱重複'); return; }"],
