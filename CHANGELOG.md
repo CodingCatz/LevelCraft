@@ -3,6 +3,18 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.18.5] - 2026-10-18
+
+工單 `2026-10-12-levelcraft-block-delete-type-in-use`（CEO 2026-10-12 定案：刪除使用中類型直接禁止）。
+
+### Changed
+- **使用中類型不能刪除**：原本只跳 `confirm`，確認後元素保留 type 字串但類型定義已刪 → 失去顏色與 `category`，轉接器一律退成 `object`。現在編輯類型對話框在有元素使用時不渲染「刪除類型」，改顯示「有 N 個元素正在使用此類型，不能刪除。請先刪除這些元素，或在右欄把它們改成其他類型。」；刪除處理函式本身也在 `pushUndo` 之前擋下，不留空 undo。
+
+### Fixed
+- **刪掉目前放置類型後放出孤兒元素**：刪除的類型若正是目前放置類型，之後點畫布會放出沒有定義的元素。現在自動改選同形狀、目前還能放置的類型（出生點／目的地已在場上時跳過）。
+
+### Tests
+- `check-ui.cjs` 新增 2 案（使用中禁刪且不留 undo；沒在用可刪、刪掉放置中的節點類型後仍能正常放置），`check-ui-rollback-probe.cjs` 新增 2 條軸（共 7 條）。
 ## [0.18.4] - 2026-10-18
 
 工單 `2026-10-12-levelcraft-ui-regression-harness`：編輯器 UI 行為原本全靠人在瀏覽器手測，改壞了沒有紅燈；下一張 editor.js 模組化單需要這道網才能安全重構。

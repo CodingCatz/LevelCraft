@@ -28,7 +28,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.18.4';
+const VERSION = '0.18.5';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -895,7 +895,11 @@ function openTypeDlg(t) {
   $('#tdMovable').checked = Boolean(t?.movable);
   renderTypeShapePicker();
   $('#tdDescription').value = t ? (t.description || '') : '';
-  $('#tdDelete').style.display = t ? '' : 'none';
+  // 使用中的類型不能刪（刪了元素會失去顏色與 category）：刪除鈕不渲染，改說明怎麼處理。
+  const inUse = t ? typeUsageCount(t.name) : 0;
+  $('#tdDelete').style.display = t && !inUse ? '' : 'none';
+  $('#tdInUse').hidden = !inUse;
+  $('#tdInUse').textContent = inUse ? typeInUseMessage(inUse) : '';
   $('#typeDlg').showModal();
 }
 
@@ -956,11 +960,22 @@ $('#tbAddLink').onclick = () => {
   if (!e.links.includes(targetId)) e.links.push(targetId);
   renderLinkDlg(); draw(); autosave();
 };
+function typeUsageCount(name) { return S.els.filter(e => e.type === name).length; }
+function typeInUseMessage(count) {
+  return `有 ${count} 個元素正在使用此類型，不能刪除。請先刪除這些元素，或在右欄把它們改成其他類型。`;
+}
 $('#tdDelete').onclick = () => {
   if (!editingType) return;
-  if (S.els.some(e => e.type === editingType.name)) { if (!confirm('有元素仍在用此類型，刪除後它們會保留原 type 字串但失去顏色。確定？')) return; }
+  // 守門在 pushUndo 之前：擋下的刪除不留空 undo。
+  const inUse = typeUsageCount(editingType.name);
+  if (inUse) { alert(typeInUseMessage(inUse)); return; }
   pushUndo();
   S.types = S.types.filter(x => x !== editingType);
+  // 刪掉的若是目前放置類型，改選同形狀且還能放的類型（出生點／目的地已在場上就跳過），避免放出沒有定義的元素。
+  if (S.activeType === editingType.name) {
+    const next = S.types.find(t => t.shape === editingType.shape && canUseType(t.name)) || S.types.find(t => canUseType(t.name)) || S.types[0];
+    S.activeType = next?.name || '';
+  }
   $('#typeDlg').close(); renderAll(); autosave();
 };
 $('#tdSave').onclick = () => {

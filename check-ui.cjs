@@ -231,6 +231,33 @@ const CASES = [
     await ev(`typeDlg.close(); true`);
   }],
 
+  ['類型：使用中類型不能刪除、不留 undo，並說明怎麼處理', async () => {
+    await freshPage(LEVEL);
+    await ev(`openTypeDlg(typeDef('wall')); true`);
+    assert.equal(await ev(`getComputedStyle(tdDelete).display`), 'none', '使用中類型不得渲染刪除鈕');
+    assert.match(await ev(`tdInUse.hidden ? '' : tdInUse.textContent`), /有 1 個元素正在使用此類型[\s\S]*改成其他類型/, '要顯示使用數與處理方式');
+    const before = await ev(`[undoStack.length, S.types.length]`);
+    await ev(`tdDelete.click(); true`); // 就算鈕被叫出來，處理函式本身也要擋
+    assert.match(dialogs.at(-1) || '', /有 1 個元素正在使用此類型/);
+    assert.deepEqual(await ev(`[undoStack.length, S.types.length]`), before, '擋下的刪除不得留 undo、不得刪掉類型');
+    assert.ok(await ev(`Boolean(typeDef('wall'))`));
+    await ev(`typeDlg.close(); true`);
+  }],
+
+  ['類型：沒在用的類型可刪；刪掉目前放置的節點類型後節點工具仍正常', async () => {
+    await freshPage(LEVEL);
+    await ev(`S.activeType = 'checkpoint'; setTool('marker'); renderAll(); openTypeDlg(typeDef('checkpoint')); true`);
+    assert.equal(await ev(`tdInUse.hidden`), true, '沒在用的類型不顯示使用中說明');
+    const undoBefore = await ev(`undoStack.length`);
+    await clickButton('tdDelete');
+    assert.equal(await ev(`typeDef('checkpoint')`), undefined, '沒在用的類型要能刪');
+    assert.equal(await ev(`undoStack.length`), undoBefore + 1, '刪除要留一筆 undo');
+    const active = await ev(`typeDef(S.activeType)?.shape`);
+    assert.equal(active, 'point', `目前放置類型要改選仍存在的點類型：${await ev('S.activeType')}`);
+    await clickUnit(25, 17);
+    assert.ok(await ev(`Boolean(typeDef(selected()?.type))`), '之後放置的元素必須有類型定義');
+  }],
+
   ['連動：目標清單不含 spawn、匯出不含懸空 links', async () => {
     await freshPage(LEVEL);
     await clickUnit(30, 5);
