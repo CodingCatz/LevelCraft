@@ -28,12 +28,16 @@ interface UnitElement {
   hUnit?: number;
   props?: Record<string, string>;
   links?: string[];
+  /** 移動路徑：pathSpace 為 "relative" 時是相對擺放位置的位移；舊檔（無 pathSpace）是元素中心要到的世界座標 */
+  path?: { x: number; y: number }[];
 }
 interface UnitLevel {
   format: string;
   name: string;
   world: { wUnit: number; hUnit: number };
-  spawnUnit: { x: number; y: number };
+  spawnUnit: { x: number; y: number } | null;
+  /** v0.19+ 匯出必為 "relative"；缺欄＝舊檔，path 是世界絕對座標 */
+  pathSpace?: 'relative';
   types?: UnitType[];
   elements: UnitElement[];
 }
@@ -68,6 +72,7 @@ function resolveCategory(typeName: string, types?: UnitType[]): GameCategory {
   return CATEGORY[typeName] ?? 'object';
 }
 
+/** 把 levelcraft/v1 關卡依 category 分流成遊戲端的 solids／hazards／objects（decor 略過）。 */
 export function toGameLevel(lv: UnitLevel): GameLevel {
   const solids: SolidConfig[] = [];
   const hazards: HazardConfig[] = [];

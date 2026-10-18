@@ -162,6 +162,24 @@ async function main() {
   );
   assert(t.decor[0].id === 'b1' && t.decor[0].category === 'decor', 'decor is data-only bucket');
 
+  // --- pathSpace: relative (v0.19+) vs legacy absolute must yield the same world path ---
+  // plat1 center = (4+3/2, 4+1/2) = (5.5, 4.5); legacy absolute [6,4],[8,4] == relative [0.5,-0.5],[2.5,-0.5]
+  const relLevel = {
+    ...level,
+    pathSpace: 'relative',
+    elements: level.elements.map((e) => (e.id === 'plat1' ? { ...e, path: [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }] } : e)),
+  };
+  const rel = transformLevelData(relLevel, { unitPx: 32 }).byId.get('plat1');
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  const samePath = (a, b) => a && b && a.length === b.length && a.every((p, i) => near(p.x, b[i].x) && near(p.y, b[i].y));
+  assert(samePath(rel.path, plat.path), `relative and legacy give same world path px (${JSON.stringify(rel.path)} vs ${JSON.stringify(plat.path)})`);
+  assert(samePath(rel.pathOffset, plat.pathOffset), 'relative and legacy give same pathOffset px');
+  assert(samePath(rel.pathOffset, [{ x: 16, y: -16 }, { x: 80, y: -16 }]), 'pathOffset = displacement px (0.5*32, -0.5*32)');
+  // point element: center is the point itself
+  const pt = transformLevelData({ format: 'levelcraft/v1', world: { wUnit: 10, hUnit: 10 }, pathSpace: 'relative',
+    elements: [{ id: 'p', kind: 'point', type: 'key', xUnit: 2, yUnit: 3, path: [{ x: 1, y: 0 }] }] }, { unitPx: 10 }).byId.get('p');
+  assert(samePath(pt.path, [{ x: 30, y: 30 }]), 'point relative path world = point + offset');
+
   // --- old file: no types[].category, no crash, everything → object ---
   const oldLevel = {
     format: 'levelcraft/v1',

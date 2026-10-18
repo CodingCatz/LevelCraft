@@ -135,6 +135,20 @@ if (fs.existsSync(sampleLevel)) {
   }
 }
 
+// 路徑舊檔相容：沒有 pathSpace 的 path 是元素中心要到的世界座標，匯入時換成相對中心的位移。
+{
+  const src = fs.readFileSync(path.join(__dirname, "editor.js"), "utf8");
+  const m = src.match(/function absolutePathToOffsets\([^)]*\) \{[\s\S]*?\n\}/);
+  if (!m) { failed++; console.log("FAIL  path legacy 抽不到 absolutePathToOffsets（改名了就同步這裡）"); }
+  else {
+    const toOffsets = new Function(`return (${m[0].replace("function absolutePathToOffsets", "function")})`)();
+    const got = toOffsets([{ x: 6, y: 4 }, { x: 8, y: 4 }, { x: 5.6, y: 4.7 }], { x: 5.5, y: 4.5 });
+    const want = [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }, { x: 0.1, y: 0.2 }];
+    if (JSON.stringify(got) === JSON.stringify(want)) console.log("PASS  path legacy        絕對座標 → 相對中心位移（含浮點捨入）");
+    else { failed++; console.log(`FAIL  path legacy  得 ${JSON.stringify(got)}，預期 ${JSON.stringify(want)}`); }
+  }
+}
+
 // 縮放下限自適應：小世界維持 0.15；大世界的下限要低到「裝滿畫面」的 zoom 以下，否則 fitViewToWorld 被卡住、世界裝不進畫面。
 {
   const src = fs.readFileSync(path.join(__dirname, "editor.js"), "utf8");

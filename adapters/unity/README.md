@@ -101,7 +101,9 @@ After import you can keep editing solids/hazards/decor with Unity’s **Tile Pal
 - `Id`, `TypeName`, `Category`, `Description`
 - `PropKeys` / `PropValues` (dictionary-safe serialization)
 - `LinkIds` + resolved `LinkedElements[]`
-- `Path` as `Vector2[]` in **Unity world space** (Y-up)
+- `Path` as `Vector2[]` in **Unity world space** (Y-up): where the element center is at each node
+- `PathOffset` as `Vector2[]`: displacement from the placed position (Unity units, Y-up). Add it to `transform.position` to move along the path. A displacement only negates Y (`-y * scale`); it never uses the world-height flip that positions use.
+- Files with `pathSpace: "relative"` (editor v0.19+) and older absolute files give the same `Path` / `PathOffset` (`LevelCraftDocument.ResolvePathPoint`).
 
 ## Coordinate conversion
 

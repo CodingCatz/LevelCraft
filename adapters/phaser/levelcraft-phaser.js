@@ -79,6 +79,37 @@ export function pathToPx(path, unitPx) {
 }
 
 /**
+ * Element center in units, same as the editor's centerOf: rect → middle, point → the point itself.
+ * @param {{ kind?: string, xUnit?: number, yUnit?: number, wUnit?: number, hUnit?: number }} el
+ * @returns {{ x: number, y: number }}
+ */
+export function elementCenterUnit(el) {
+  const x = Number(el.xUnit ?? 0), y = Number(el.yUnit ?? 0);
+  const isRect = el.kind === 'rect' || (el.wUnit != null && el.hUnit != null);
+  return isRect ? { x: x + Number(el.wUnit ?? 0) / 2, y: y + Number(el.hUnit ?? 0) / 2 } : { x, y };
+}
+
+/**
+ * Resolve an element's path for either pathSpace into unit offsets + world positions of the element center.
+ * - `pathSpace: "relative"` (editor v0.19+): each point is the element's displacement from where it is placed.
+ * - anything else (older files): each point is the world position the element center travels to.
+ * Both produce identical `world` values for the same physical path.
+ * @param {object} el levelcraft/v1 element
+ * @param {string|undefined} pathSpace top-level `pathSpace` of the document
+ * @returns {Array<{ offset: { x: number, y: number }, world: { x: number, y: number } }>|undefined}
+ */
+export function resolvePathUnits(el, pathSpace) {
+  if (!el || !Array.isArray(el.path) || el.path.length === 0) return undefined;
+  const c = elementCenterUnit(el);
+  const relative = pathSpace === 'relative';
+  return el.path.map((p) => {
+    const x = Number(p.xUnit ?? p.x ?? 0), y = Number(p.yUnit ?? p.y ?? 0);
+    const offset = relative ? { x, y } : { x: x - c.x, y: y - c.y };
+    return { offset, world: { x: c.x + offset.x, y: c.y + offset.y } };
+  });
+}
+
+/**
  * Pure data transform (no Phaser). Safe to run under Node for asserts.
  *
  * @param {object} json levelcraft/v1 document
@@ -122,7 +153,10 @@ export function transformLevelData(json, options = {}) {
     const y = toPx(el.yUnit ?? 0, unitPx);
     const w = isRect ? toPx(el.wUnit, unitPx) : toPx(pointSizeUnit, unitPx);
     const h = isRect ? toPx(el.hUnit, unitPx) : toPx(pointSizeUnit, unitPx);
-    const path = pathToPx(el.path, unitPx);
+    const resolved = resolvePathUnits(el, json.pathSpace);
+    // path: world px of the element center at each node; pathOffset: px displacement from the placed position.
+    const path = resolved ? pathToPx(resolved.map((r) => r.world), unitPx) : undefined;
+    const pathOffset = resolved ? pathToPx(resolved.map((r) => r.offset), unitPx) : undefined;
 
     const record = {
       id: el.id,
@@ -141,6 +175,7 @@ export function transformLevelData(json, options = {}) {
       links: Array.isArray(el.links) ? el.links.slice() : undefined,
       description: el.description,
       path,
+      pathOffset,
       raw: el,
     };
 
@@ -222,6 +257,7 @@ function attachMeta(go, rec) {
     go.setData('links', rec.links);
     go.setData('description', rec.description);
     go.setData('path', rec.path);
+    go.setData('pathOffset', rec.pathOffset);
     go.setData('lc', rec);
   }
   go.lcId = rec.id;
@@ -230,6 +266,7 @@ function attachMeta(go, rec) {
   go.lcProps = rec.props;
   go.lcLinks = rec.links;
   go.lcPath = rec.path;
+  go.lcPathOffset = rec.pathOffset;
   if (rec.category === 'hazard') go.isHazard = true;
   return go;
 }

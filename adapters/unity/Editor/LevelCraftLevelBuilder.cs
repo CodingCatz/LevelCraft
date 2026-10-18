@@ -1,3 +1,5 @@
+// 把解析好的 LevelCraftDocument 建成 Unity 場景物件：Grid／Tilemap、碰撞、Tile Palette 與每個元素的 LevelCraftElement。
+
 using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
@@ -408,9 +410,13 @@ namespace LevelCraft.Unity.Editor
             if (el.PathUnits.Count > 0)
             {
                 var path = new Vector2[el.PathUnits.Count];
+                var offsets = new Vector2[el.PathOffsetUnits.Count];
                 for (int i = 0; i < el.PathUnits.Count; i++)
                     path[i] = LevelCraftDocument.PathPointToUnity(el.PathUnits[i], doc.WorldHUnit, scale);
+                for (int i = 0; i < el.PathOffsetUnits.Count; i++)
+                    offsets[i] = LevelCraftDocument.PathOffsetToUnity(el.PathOffsetUnits[i], scale);
                 comp.Path = path;
+                comp.PathOffset = offsets;
             }
 
             if (!string.IsNullOrEmpty(el.Id))

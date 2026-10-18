@@ -28,7 +28,7 @@ const DEFAULT_TYPES = [
   { name: 'checkpoint', color: '#63b3ed', shape: 'point', category: 'object', description: '' },
 ];
 
-const VERSION = '0.18.6';
+const VERSION = '0.19.0';
 const FORMAT = 'levelcraft/v1';
 const LS_KEY = 'levelcraft:autosave';
 
@@ -292,11 +292,11 @@ let pathDashOffset = 0;
 function drawPaths() {
   for (const e of S.els) {
     if (!e.path?.length) continue;
-    const col = typeColor(e.type), points = [centerOf(e), ...e.path];
+    const col = typeColor(e.type), points = [centerOf(e), ...e.path.map(p => pathNodeWorld(e, p))];
     ctx.save(); ctx.strokeStyle = hexA(col, e.id === S.selId ? 0.95 : 0.42); ctx.lineWidth = 1.5;
     ctx.setLineDash([7, 5]); ctx.lineDashOffset = e.id === S.selId ? -pathDashOffset : 0;
     ctx.beginPath(); points.forEach((p, i) => { const s = toScreen(p.x, p.y); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y); }); ctx.stroke();
-    for (const p of e.path) { const s = toScreen(p.x, p.y); ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fillStyle = hexA(col, .45); ctx.fill(); ctx.strokeStyle = col; ctx.setLineDash([]); ctx.stroke(); ctx.setLineDash([7, 5]); }
+    for (const p of points.slice(1)) { const s = toScreen(p.x, p.y); ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fillStyle = hexA(col, .45); ctx.fill(); ctx.strokeStyle = col; ctx.setLineDash([]); ctx.stroke(); ctx.setLineDash([7, 5]); }
     ctx.restore();
   }
 }
@@ -399,7 +399,10 @@ function hitHandle(e, ux, uy) {
 let drag = null; // { mode, ... }
 let pathEditingId = null;
 function pathTarget() { return S.els.find(e => e.id === pathEditingId); }
-function hitPathNode(e, ux, uy) { if (!e?.path) return -1; const tol = 10 / scale(); return e.path.findIndex(p => Math.hypot(p.x - ux, p.y - uy) <= tol); }
+// path[i] 是元素相對擺放位置的位移（單位）；畫面上的節點＝元素中心＋位移，所以元素移動、複製時路徑跟著走。
+function pathNodeWorld(e, p) { const c = centerOf(e); return { x: c.x + p.x, y: c.y + p.y }; }
+function pathOffsetAt(e, u) { const c = centerOf(e); return { x: round4(snapU(u.x) - c.x), y: round4(snapU(u.y) - c.y) }; }
+function hitPathNode(e, ux, uy) { if (!e?.path) return -1; const tol = 10 / scale(); return e.path.findIndex(p => { const w = pathNodeWorld(e, p); return Math.hypot(w.x - ux, w.y - uy) <= tol; }); }
 let toolbarTransientStatus = '';
 let toolbarTransientTimer = null;
 const MARQUEE_THRESHOLD_PX = 4;
@@ -457,7 +460,7 @@ cw.addEventListener('mousedown', ev => {
     const index = hitPathNode(target, u.x, u.y);
     pushUndo();
     if (index >= 0) drag = { mode: 'movePath', e: target, index };
-    else { target.path = target.path || []; target.path.push({ x: round4(snapU(u.x)), y: round4(snapU(u.y)) }); drag = { mode: 'movePath', e: target, index: target.path.length - 1 }; }
+    else { target.path = target.path || []; target.path.push(pathOffsetAt(target, u)); drag = { mode: 'movePath', e: target, index: target.path.length - 1 }; }
     renderToolbox(); draw(); return;
   }
   const sel = selected();
@@ -557,7 +560,7 @@ window.addEventListener('mousemove', ev => {
     e.h = round4(Math.max(S.snap || 0.1, Math.abs(y2 - y1)));
     renderProps(); draw(); return;
   }
-  if (drag.mode === 'movePath') { const p = drag.e.path[drag.index]; p.x = round4(snapU(u.x)); p.y = round4(snapU(u.y)); draw(); return; }
+  if (drag.mode === 'movePath') { drag.e.path[drag.index] = pathOffsetAt(drag.e, u); draw(); return; }
   if (drag.mode === 'moveGroup') {
     cw.style.cursor = 'move';
     const dx = u.x - drag.grabU.x, dy = u.y - drag.grabU.y;
@@ -1045,6 +1048,11 @@ function normalizeElementRefs(els) {
   return els;
 }
 
+/** 舊格式的絕對路徑點（元素中心要到的位置）→ 相對中心的位移。純函式，check-import.cjs 直接抽出來驗。 */
+function absolutePathToOffsets(path, center) {
+  return path.map(p => ({ x: Math.round((p.x - center.x) * 10000) / 10000, y: Math.round((p.y - center.y) * 10000) / 10000 }));
+}
+
 function serialize(includeEditorState = false) {
   const spawn = singletonElement('spawn');
   const exportedIds = new Set(S.els.filter(e => e.type !== 'spawn').map(e => e.id));
@@ -1055,6 +1063,8 @@ function serialize(includeEditorState = false) {
     snap: S.snap,
     // 保留 v1 頂層欄位；未放出生點時以 null 表示，避免捏造不存在的座標。
     spawnUnit: spawn ? { x: spawn.x, y: spawn.y } : null,
+    // path 是元素相對擺放位置的位移；沒有這個欄位的舊檔 path 是世界絕對座標。
+    pathSpace: 'relative',
     types: S.types.map(t => {
       const o = {
         name: t.name,
@@ -1135,6 +1145,8 @@ function deserialize(d) {
     ...(e.wUnit != null ? { w: e.wUnit, h: e.hUnit ?? 1 } : {}),
     description: e.description || '', props: e.props || {}, links: e.links || [], path: Array.isArray(e.path) ? e.path.map(p => ({ x: p.x ?? 0, y: p.y ?? 0 })) : [],
   }));
+  // 舊檔（含舊 autosave）的 path 是元素中心要到的世界座標，換成相對位移，畫面位置不變。
+  if (d.pathSpace !== 'relative') for (const e of S.els) if (e.path.length) e.path = absolutePathToOffsets(e.path, centerOf(e));
   normalizeElementRefs(S.els);
   S.groups = d.editor?.groups || [];
   normalizeGroups();

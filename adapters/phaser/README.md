@@ -74,7 +74,7 @@ Reads `types[].category` (SSOT from the editor since v0.15). Element looks up it
 
 Missing or unknown category → **`object`** (old files do not throw). Name-based guessing is intentionally **not** done here; put categories in the JSON.
 
-Metadata is on the GameObject via `setData(...)` and convenience fields: `lcId`, `lcType`, `lcCategory`, `lcProps`, `lcLinks`, `lcPath`.
+Metadata is on the GameObject via `setData(...)` and convenience fields: `lcId`, `lcType`, `lcCategory`, `lcProps`, `lcLinks`, `lcPath`, `lcPathOffset`.
 
 ## Links & path
 
@@ -82,7 +82,12 @@ Metadata is on the GameObject via `setData(...)` and convenience fields: `lcId`,
 const door = level.resolveLinks(switchGo); // → [doorGo, ...]
 ```
 
-`path` on an element becomes an array of `{ x, y }` in **pixels** (export path points are unit `{ x, y }`). Tweens / moving platforms are the game’s job.
+Each record with a path gets two arrays in **pixels**:
+
+- `path`: world position of the element **center** at each node (same meaning as before v0.19, so existing consumers keep working).
+- `pathOffset`: displacement from where the element is placed. Add it to whatever origin your game object uses (e.g. `go.x + pathOffset[i].x`); this is the robust choice for moving platforms.
+
+Files with `pathSpace: "relative"` (editor v0.19+, path points are displacements) and older files without `pathSpace` (path points are absolute center positions) produce identical `path` / `pathOffset`. `resolvePathUnits(el, pathSpace)` exposes the same conversion in units. Tweens / moving platforms are the game’s job.
 
 ## Example demo
 

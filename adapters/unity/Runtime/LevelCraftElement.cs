@@ -1,3 +1,5 @@
+// 掛在匯入物件上的 LevelCraft 元素資料（id、類型、category、props、links、路徑），遊戲執行期讀取用。
+
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -41,10 +43,16 @@ namespace LevelCraft.Unity
         public LevelCraftElement[] LinkedElements = Array.Empty<LevelCraftElement>();
 
         /// <summary>
-        /// Path waypoints in Unity world space (Y-up), after unit→Unity conversion.
+        /// Path waypoints in Unity world space (Y-up): where the element center is at each node.
         /// Empty when the element has no path.
         /// </summary>
         public Vector2[] Path = Array.Empty<Vector2>();
+
+        /// <summary>
+        /// Path as displacement from the element's placed position at each node (Unity units, Y-up).
+        /// Add to the transform position to move the element along its path; same length as <see cref="Path"/>.
+        /// </summary>
+        public Vector2[] PathOffset = Array.Empty<Vector2>();
 
         #endregion 屬性與連動
 

@@ -122,7 +122,7 @@ async function dragUnit(from, to) {
   for (let i = 1; i <= 6; i++) await mouse('mouseMoved', { x: a.x + (b.x - a.x) * i / 6, y: a.y + (b.y - a.y) * i / 6 }, 1);
   await mouse('mouseReleased', b);
 }
-const KEYS = { ArrowRight: 39, ArrowLeft: 37, ArrowUp: 38, ArrowDown: 40, z: 90, y: 89 };
+const KEYS = { ArrowRight: 39, ArrowLeft: 37, ArrowUp: 38, ArrowDown: 40, Delete: 46, z: 90, y: 89 };
 async function press(key, { ctrl = false } = {}) {
   await ev(`document.activeElement?.blur(); true`);
   const base = { key, code: key.length === 1 ? `Key${key.toUpperCase()}` : key, windowsVirtualKeyCode: KEYS[key], modifiers: ctrl ? 2 : 0 };
@@ -147,6 +147,20 @@ const LEVEL = {
   ],
 };
 const GROUPED = { ...LEVEL, editor: { groups: [{ id: 'group-1', memberIds: ['g1', 'g2'] }] } };
+// plat 中心 (5.5, 4.5)；相對位移 (0.5,-0.5)、(2.5,-0.5) ＝ 世界 (6,4)、(8,4)
+const PATH_LEVEL = {
+  format: 'levelcraft/v1', name: 'path-check', world: { wUnit: 40, hUnit: 20 }, snap: 0.5, pathSpace: 'relative',
+  types: [
+    { name: 'ground', color: '#5568d3', shape: 'rect', category: 'solid' },
+    { name: 'platform', color: '#7c8cff', shape: 'rect', category: 'solid', movable: true },
+  ],
+  elements: [
+    { id: 'plat', kind: 'rect', type: 'platform', xUnit: 4, yUnit: 4, wUnit: 3, hUnit: 1, path: [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }] },
+    { id: 'g', kind: 'rect', type: 'ground', xUnit: 2, yUnit: 6, wUnit: 2, hUnit: 1 },
+  ],
+};
+/** 元素路徑節點在畫面上的世界座標（中心＋位移），四捨五入到 4 位小數。 */
+const pathNodes = id => ev(`(S.els.find(e => e.id === ${JSON.stringify(id)}).path || []).map(p => pathNodeWorld(S.els.find(e => e.id === ${JSON.stringify(id)}), p)).map(p => ({ x: round4(p.x), y: round4(p.y) }))`);
 
 // ---------- 案例 ----------
 
@@ -345,6 +359,54 @@ const CASES = [
     for (let i = 0; i < 60; i++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: center.x, y: center.y, deltaX: 0, deltaY: 120 });
     assert.equal(await ev(`S.view.zoom`), 0.15, '80×20 世界滾輪縮小要停在 0.15');
     return notes.join('；');
+  }],
+
+  ['路徑：舊檔絕對座標匯入後節點位置不變，再匯出變成相對位移', async () => {
+    await freshPage(LEVEL);
+    await clickButton('btnImport');
+    await ev(`ioText.value = ${JSON.stringify(JSON.stringify({ ...PATH_LEVEL, pathSpace: undefined,
+      elements: [{ ...PATH_LEVEL.elements[0], path: [{ x: 6, y: 4 }, { x: 8, y: 4 }] }, PATH_LEVEL.elements[1]] }))}; true`);
+    await clickButton('ioLoad');
+    assert.deepEqual(await pathNodes('plat'), [{ x: 6, y: 4 }, { x: 8, y: 4 }], '舊檔節點畫面位置要與舊版相同');
+    assert.deepEqual((await el('plat')).path, [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }], '內部存相對位移');
+    await clickButton('btnExport');
+    const out = JSON.parse(await ev(`ioText.value`));
+    assert.equal(out.pathSpace, 'relative', '匯出要帶 pathSpace: relative');
+    assert.deepEqual(out.elements.find(e => e.id === 'plat').path, [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }], '匯出 path 為位移值');
+    await clickButton('ioClose');
+  }],
+
+  ['路徑：元素拖曳／方向鍵／群組搬移／複製後節點跟著走', async () => {
+    await freshPage(PATH_LEVEL);
+    await dragUnit([5.5, 4.5], [8.5, 4.5]);
+    assert.deepEqual(await pathNodes('plat'), [{ x: 9, y: 4 }, { x: 11, y: 4 }], '拖曳 3 單位，節點跟著 +3');
+    await press('ArrowDown');
+    assert.deepEqual(await pathNodes('plat'), [{ x: 9, y: 4.5 }, { x: 11, y: 4.5 }], '方向鍵下移一格，節點跟著');
+    await clickButton('tbDup');
+    const copyId = await ev(`selected().id`);
+    assert.notEqual(copyId, 'plat');
+    assert.deepEqual(await pathNodes(copyId), [{ x: 9.5, y: 5 }, { x: 11.5, y: 5 }], '複製品的節點跟著複製品（偏移一格）');
+    await press('Delete'); // 刪掉複製品，接著驗群組
+    await dragUnit([1, 3], [11, 7.5]); // 框選 plat（7,4.5 起 3×1）與 g（2,6 起 2×1）
+    assert.deepEqual(await selection(), ['g', 'plat']);
+    await clickButton('tbGroup');
+    await dragUnit([3, 6.5], [3, 8.5]); // 拖群組另一個成員
+    assert.deepEqual(await pathNodes('plat'), [{ x: 9, y: 6.5 }, { x: 11, y: 6.5 }], '群組整組搬移，節點跟著');
+  }],
+
+  ['路徑：用滑鼠新增、拖曳、右鍵刪除節點，存的是相對位移', async () => {
+    await freshPage(PATH_LEVEL);
+    await clickUnit(5.5, 4.5);
+    await clickButton('tbEditPath');
+    await clickUnit(12, 2);
+    assert.deepEqual((await el('plat')).path.at(-1), { x: 6.5, y: -2.5 }, '新增節點存 (點擊位置 − 元素中心)');
+    await dragUnit([12, 2], [13, 3]);
+    assert.deepEqual((await el('plat')).path.at(-1), { x: 7.5, y: -1.5 }, '拖曳節點後更新位移');
+    const p = await unitToPage(13, 3);
+    await mouse('mouseMoved', p);
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: p.x, y: p.y, button: 'right', buttons: 2, clickCount: 1 });
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: p.x, y: p.y, button: 'right', buttons: 0, clickCount: 1 });
+    assert.equal((await el('plat')).path.length, 2, '右鍵刪除節點');
   }],
 
   ['undo／redo 基本來回', async () => {

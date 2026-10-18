@@ -3,6 +3,22 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.19.0] - 2026-10-18
+
+工單 `2026-10-12-levelcraft-path-relative-coords`（CEO 2026-10-12 定案：路徑改相對座標）。
+
+### Changed
+- **路徑節點改為相對元素的位移**：`elements[].path[i]` 從世界絕對座標改成元素相對其擺放位置的位移（單位，Y 向下）。編輯器把節點畫在「元素中心＋位移」，新增／拖曳節點時換算回位移；元素被拖曳、方向鍵移動、群組整組搬移、複製後路徑跟著走（原本留在原地）。
+- **匯出頂層加 `"pathSpace": "relative"`**（仍是 `levelcraft/v1`，向後相容）。
+- **舊檔相容**：沒有 `pathSpace` 的檔案（含舊 autosave）匯入時把每個點換成 `點 − 元素中心`，節點畫面位置與舊版相同，再匯出即為相對值。純函式 `absolutePathToOffsets`。
+- **轉接器同步**：
+  - Phaser：新增 `elementCenterUnit`、`resolvePathUnits(el, pathSpace)`；record 的 `path` 維持「每個節點時元素中心的世界 px」（舊消費端不變），另加 `pathOffset`（相對位移 px，`lcPathOffset`）。兩種 `pathSpace` 結果相同。
+  - Unity：`LevelCraftDocument` 讀 `pathSpace`，新增 `ElementCenterUnit`／`ResolvePathPoint`／`PathOffsetToUnity`（位移只把 Y 取負號，不套世界高度翻轉）；`Element.PathUnits` 維持中心世界座標，另加 `PathOffsetUnits`；`LevelCraftElement` 新增 `PathOffset`。
+- README 格式說明、兩個轉接器 README、`examples/adapter.ts` 型別同步。
+
+### Tests
+- `check-import.cjs` 新增 path legacy 案；`check-ui.cjs` 新增 3 案（舊檔匯入位置不變並以相對值匯出；拖曳／方向鍵／複製／群組搬移後節點跟著走；滑鼠新增／拖曳／右鍵刪除節點存相對位移），回滾探針新增 2 軸（共 10 條）。
+- `adapters/phaser/check.cjs`、`adapters/unity/check-coords.cjs` 各補相對與舊檔同結果的案例；Unity `LevelCraftCoordTests` 新增 `Path_RelativeAndLegacy_SameWorld`。`LevelCraftDocument.cs` 另以 dotnet＋最小 UnityEngine 替身實際編譯並執行同一比對（抓到一個區域變數名衝突的編譯錯誤，已修）。
 ## [0.18.6] - 2026-10-18
 
 工單 `2026-10-12-levelcraft-adaptive-zoom-min`。

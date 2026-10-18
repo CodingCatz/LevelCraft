@@ -1,3 +1,5 @@
+// levelcraft/v1 JSON 解析與座標換算（編輯器單位 Y 向下 → Unity Y 向上），純計算、不動場景，供匯入器與 EditMode 測試共用。
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -40,8 +42,14 @@ namespace LevelCraft.Unity.Editor
             public string Description;
             public readonly Dictionary<string, string> Props = new Dictionary<string, string>();
             public readonly List<string> Links = new List<string>();
+            /// <summary>Path in editor units: world position of the element center at each node (Y-down).</summary>
             public readonly List<Vector2> PathUnits = new List<Vector2>();
+            /// <summary>Path in editor units: displacement from the placed position at each node (Y-down).</summary>
+            public readonly List<Vector2> PathOffsetUnits = new List<Vector2>();
         }
+
+        /// <summary>Top-level pathSpace: "relative" (editor v0.19+) or empty for older absolute files.</summary>
+        public string PathSpace;
 
         /// <summary>format field.</summary>
         public string Format;
@@ -225,6 +233,33 @@ namespace LevelCraft.Unity.Editor
             return PointToUnity(unitPoint.x, unitPoint.y, worldHUnit, scale);
         }
 
+        /// <summary>
+        /// Path displacement unit → Unity. A displacement is not a position, so Y is only negated
+        /// (Y-down → Y-up); the world-height flip must not be applied.
+        /// </summary>
+        public static Vector2 PathOffsetToUnity(Vector2 unitOffset, float scale)
+        {
+            return new Vector2(unitOffset.x * scale, -unitOffset.y * scale);
+        }
+
+        /// <summary>Element center in editor units (same as the editor's centerOf): rect → middle, point → itself.</summary>
+        public static Vector2 ElementCenterUnit(Element el)
+        {
+            return el.HasSize
+                ? new Vector2(el.XUnit + el.WUnit / 2f, el.YUnit + el.HUnit / 2f)
+                : new Vector2(el.XUnit, el.YUnit);
+        }
+
+        /// <summary>
+        /// One raw path point → (world center position, displacement) in editor units.
+        /// relative: raw is the displacement; otherwise (older files) raw is the world position the center reaches.
+        /// </summary>
+        public static void ResolvePathPoint(bool relative, Vector2 raw, Vector2 center, out Vector2 world, out Vector2 offset)
+        {
+            offset = relative ? raw : raw - center;
+            world = center + offset;
+        }
+
         #endregion 座標換算
 
         #region JSON 解析
@@ -279,6 +314,9 @@ namespace LevelCraft.Unity.Editor
                     "world size invalid (need positive wUnit/hUnit or w/h). Keys in world: " +
                     JoinKeys(world));
             }
+
+            doc.PathSpace = GetString(root, "pathSpace");
+            var relativePath = doc.PathSpace == "relative";
 
             var spawn = GetDict(root, "spawnUnit");
             if (spawn != null)
@@ -356,6 +394,7 @@ namespace LevelCraft.Unity.Editor
                 var path = GetList(ed, "path");
                 if (path != null)
                 {
+                    var center = ElementCenterUnit(el);
                     foreach (var p in path)
                     {
                         var pd = p as Dictionary<string, object>;
@@ -363,7 +402,9 @@ namespace LevelCraft.Unity.Editor
                         // Export uses { x, y } in units (see editor.js)
                         var px = pd.ContainsKey("xUnit") ? GetFloat(pd, "xUnit") : GetFloat(pd, "x");
                         var py = pd.ContainsKey("yUnit") ? GetFloat(pd, "yUnit") : GetFloat(pd, "y");
-                        el.PathUnits.Add(new Vector2(px, py));
+                        ResolvePathPoint(relativePath, new Vector2(px, py), center, out var pathWorld, out var pathOffset);
+                        el.PathUnits.Add(pathWorld);
+                        el.PathOffsetUnits.Add(pathOffset);
                     }
                 }
 

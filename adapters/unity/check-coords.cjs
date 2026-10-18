@@ -118,6 +118,34 @@ assert(normalizeCategory('nope') === 'object', 'unknown category → object');
   assert(near(p0.y, 8), 'path point y-flip 10-2=8');
 }
 
+// pathSpace — mirrors LevelCraftDocument.ElementCenterUnit / ResolvePathPoint / PathOffsetToUnity
+function elementCenterUnit(el) {
+  const hasSize = el.wUnit != null || el.hUnit != null || el.kind === 'rect';
+  return hasSize ? { x: el.xUnit + (el.wUnit ?? 1) / 2, y: el.yUnit + (el.hUnit ?? 1) / 2 } : { x: el.xUnit, y: el.yUnit };
+}
+function resolvePathPoint(relative, raw, center) {
+  const offset = relative ? { x: raw.x, y: raw.y } : { x: raw.x - center.x, y: raw.y - center.y };
+  return { world: { x: center.x + offset.x, y: center.y + offset.y }, offset };
+}
+function pathOffsetToUnity(offset, scale) {
+  return { x: offset.x * scale, y: -offset.y * scale };
+}
+{
+  const plat = { kind: 'rect', xUnit: 4, yUnit: 4, wUnit: 3, hUnit: 1 }; // center (5.5, 4.5)
+  const c = elementCenterUnit(plat);
+  const legacy = [{ x: 6, y: 4 }, { x: 8, y: 4 }].map((p) => resolvePathPoint(false, p, c));
+  const rel = [{ x: 0.5, y: -0.5 }, { x: 2.5, y: -0.5 }].map((p) => resolvePathPoint(true, p, c));
+  const same = legacy.every((l, i) => near(l.world.x, rel[i].world.x) && near(l.world.y, rel[i].world.y)
+    && near(l.offset.x, rel[i].offset.x) && near(l.offset.y, rel[i].offset.y));
+  assert(same, 'path relative and legacy (old file) resolve to same world + offset');
+  const u0 = pointToUnity(rel[0].world.x, rel[0].world.y, 10, 1);
+  assert(near(u0.x, 6) && near(u0.y, 6), 'relative path world → Unity (6, 10-4=6)');
+  const o0 = pathOffsetToUnity(rel[0].offset, 32);
+  assert(near(o0.x, 16) && near(o0.y, 16), 'path offset Y negated only (no world-height flip): (0.5,-0.5)*32 → (16,16)');
+  const pt = resolvePathPoint(true, { x: 1, y: 2 }, elementCenterUnit({ kind: 'point', xUnit: 3, yUnit: 3 }));
+  assert(near(pt.world.x, 4) && near(pt.world.y, 5), 'point element: world = point + offset');
+}
+
 // Demo level from phaser example / Fixtures (shared fixture semantics)
 {
   const fs = require('node:fs');

@@ -124,6 +124,28 @@ namespace LevelCraft.Unity.Tests
         }
 
         [Test]
+        public void Path_RelativeAndLegacy_SameWorld()
+        {
+            // plat center = (5.5, 4.5); legacy absolute (6,4),(8,4) == relative (0.5,-0.5),(2.5,-0.5)
+            const string head = @"{ ""format"": ""levelcraft/v1"", ""world"": { ""wUnit"": 20, ""hUnit"": 10 }, ";
+            const string plat = @"""elements"": [ { ""id"": ""plat"", ""kind"": ""rect"", ""type"": ""ground"",
+                ""xUnit"": 4, ""yUnit"": 4, ""wUnit"": 3, ""hUnit"": 1, ""path"": ";
+            var legacy = LevelCraftDocument.Parse(head + plat + @"[ { ""x"": 6, ""y"": 4 }, { ""x"": 8, ""y"": 4 } ] } ] }").Elements[0];
+            var rel = LevelCraftDocument.Parse(head + @"""pathSpace"": ""relative"", " + plat + @"[ { ""x"": 0.5, ""y"": -0.5 }, { ""x"": 2.5, ""y"": -0.5 } ] } ] }").Elements[0];
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.AreEqual(legacy.PathUnits[i].x, rel.PathUnits[i].x, 1e-5f);
+                Assert.AreEqual(legacy.PathUnits[i].y, rel.PathUnits[i].y, 1e-5f);
+                Assert.AreEqual(legacy.PathOffsetUnits[i].x, rel.PathOffsetUnits[i].x, 1e-5f);
+                Assert.AreEqual(legacy.PathOffsetUnits[i].y, rel.PathOffsetUnits[i].y, 1e-5f);
+            }
+            // displacement Y-down -0.5 → Unity Y-up +0.5 (negate only, no world-height flip)
+            var o0 = LevelCraftDocument.PathOffsetToUnity(rel.PathOffsetUnits[0], 1f);
+            Assert.AreEqual(0.5f, o0.x, 1e-5f);
+            Assert.AreEqual(0.5f, o0.y, 1e-5f);
+        }
+
+        [Test]
         public void Parse_AgreedStructure_DemoLevel()
         {
             // Same shape as adapters/phaser/example/level-demo.json (levelcraft/v1).
