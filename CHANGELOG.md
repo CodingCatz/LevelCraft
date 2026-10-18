@@ -3,6 +3,19 @@
 本檔記錄 LevelCraft 的所有顯著變更。
 格式參照 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版本遵循 [SemVer 2.0.0](https://semver.org/lang/zh-TW/)。
 
+## [0.19.1] - 2026-10-18
+
+工單 `2026-10-12-levelcraft-editor-modularize`：純重構，使用者行為與 `levelcraft/v1` 輸出不變。
+
+### Changed
+- **`editor.js`（1.3k 行單檔）拆成原生 ES 模組 `src/`**：`main`（進入點）、`format`（格式、`VERSION` 唯一定義處，不碰 DOM）、`state`（狀態、undo、選取、群組、命中測試，不碰 DOM）、`geometry`（純幾何與縮放）、`view`（繪製）、`ui`（面板與對話框）、`interaction`（滑鼠鍵盤）、`dom`（DOM 節點）。函式本體原樣搬移；跨模組會被重新指派的 `let`（`uid`、`drag`、`pathEditingId`、`spaceDown`、`pathDashOffset`）收進 `state.js` 的 `RT` 物件。`index.html` 改載 `<script type="module" src="src/main.js">`，維持零建置。
+- **`file://` 直接開不再可行**（瀏覽器擋模組），README 註明需本機靜態伺服器；GitHub Pages 不受影響。
+- **`check-import.cjs` 直接 `import` `src/format.js`／`src/geometry.js`**，不再用 regex 從原始碼抽函式；新增「格式層不引用瀏覽器 API」檢查。
+- `check-ui.cjs` 從 `main.js` 的測試掛鉤 `window.__levelcraft` 取狀態與函式（案例內容不變）；回滾探針改為複製 `src/` 並在對應模組突變。
+- README 補檔案結構表與自檢說明。
+
+### Verified
+- 重構前後匯出逐字相同：同一支腳本在無頭 Chrome 裡把 831 份關卡（`examples/celeste-import/out`、本機 `data/levelcraft` 824 份、Unity／Phaser fixtures）經「匯入」載入後取「匯出 JSON」原文，重構前（v0.19.0）與重構後輸出檔 SHA-256 相同、831 筆逐筆相等。
 ## [0.19.0] - 2026-10-18
 
 工單 `2026-10-12-levelcraft-path-relative-coords`（CEO 2026-10-12 定案：路徑改相對座標）。

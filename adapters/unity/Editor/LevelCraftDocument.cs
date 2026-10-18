@@ -399,7 +399,7 @@ namespace LevelCraft.Unity.Editor
                     {
                         var pd = p as Dictionary<string, object>;
                         if (pd == null) continue;
-                        // Export uses { x, y } in units (see editor.js)
+                        // Export uses { x, y } in units (see src/format.js)
                         var px = pd.ContainsKey("xUnit") ? GetFloat(pd, "xUnit") : GetFloat(pd, "x");
                         var py = pd.ContainsKey("yUnit") ? GetFloat(pd, "yUnit") : GetFloat(pd, "y");
                         ResolvePathPoint(relativePath, new Vector2(px, py), center, out var pathWorld, out var pathOffset);
@@ -417,7 +417,7 @@ namespace LevelCraft.Unity.Editor
         /// <summary>
         /// Detect Celeste intermediate pipeline payloads (room / room-index) and
         /// throw an actionable error before the generic "Missing world" path.
-        /// Mirrors editor.js intermediateKind + validateLevel.
+        /// Mirrors src/format.js intermediateKind + validateLevel.
         /// </summary>
         static void ThrowIfNotLevelCraftPayload(Dictionary<string, object> root)
         {

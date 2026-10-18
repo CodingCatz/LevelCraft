@@ -97,13 +97,14 @@ async function ev(expression) {
   return r.result.value;
 }
 
-/** 重新載入乾淨頁面並灌入關卡；localStorage 在 editor.js 執行前就清掉，避免上一個案例的 autosave 混進來。 */
+/** 重新載入乾淨頁面並灌入關卡；localStorage 在編輯器模組執行前就清掉，避免上一個案例的 autosave 混進來。 */
 async function freshPage(level) {
   dialogs.length = 0;
   const loaded = new Promise(resolve => cdp.on('Page.loadEventFired', resolve));
   await cdp.send('Page.navigate', { url: baseUrl });
   await loaded;
-  await waitFor(() => ev(`typeof S === 'object' && typeof renderAll === 'function'`), 5000, 'editor.js 載入');
+  // 編輯器是 ES 模組，頂層宣告不在 window 上；把 main.js 的測試掛鉤攤到全域，案例裡的 S、renderAll… 寫法不變。
+  await waitFor(() => ev(`Boolean(window.__levelcraft) && (Object.assign(globalThis, window.__levelcraft), true)`), 5000, '編輯器模組載入');
   if (level) await ev(`deserialize(${JSON.stringify(level)}); fitViewToWorld(); syncInputs(); renderAll(); undoStack.length = 0; redoStack.length = 0; true`);
 }
 

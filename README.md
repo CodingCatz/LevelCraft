@@ -1,6 +1,6 @@
 # LevelCraft
 
-通用的、以「**單位（unit）**」為共通語言的 2D 關卡編輯器。純前端、零依賴、單一 HTML + JS，
+通用的、以「**單位（unit）**」為共通語言的 2D 關卡編輯器。純前端、零依賴、零建置（一個 HTML ＋原生 ES 模組），
 可直接架在 **GitHub Pages**。
 
 不綁任何遊戲引擎：編輯器只認「單位座標」，**1 單位等於多少 px 由使用這份 JSON 的遊戲自己定義**。
@@ -16,8 +16,22 @@ LevelCraft 就一件事：把「單位座標的關卡」畫出來、存成乾淨
 
 ## 使用方式
 
-線上版直接開 GitHub Pages 網址即可；本機用 `python -m http.server` 或任意靜態伺服器開 `index.html`
-（`file://` 直接開也行，但部分瀏覽器的剪貼簿權限會受限）。
+線上版直接開 GitHub Pages 網址即可；本機用 `python -m http.server` 或任意靜態伺服器開 `index.html`。
+**`file://` 直接開不行**：編輯器是 `<script type="module">`，Chrome／Edge 會擋從 `file://` 載入模組（v0.19.1 起）。
+
+### 檔案結構
+
+| 檔案 | 負責 |
+|------|------|
+| `index.html` | 版面、樣式與對話框標記；載入 `src/main.js` |
+| `src/main.js` | 進入點：載入 autosave、初始視角、視窗縮放監聽 |
+| `src/format.js` | `levelcraft/v1` 格式：`VERSION`（唯一定義處）、匯入守門、序列化／反序列化。**不碰 DOM**，Node 可直接 `import` |
+| `src/state.js` | 狀態 `S`、undo、選取與群組、類型查詢、命中測試（不碰 DOM） |
+| `src/geometry.js` | 純幾何與縮放計算（不碰狀態與 DOM） |
+| `src/view.js` | 畫布繪製與視角 |
+| `src/ui.js` | 面板、工具箱、對話框、匯入匯出、autosave |
+| `src/interaction.js` | 滑鼠鍵盤互動、刪除／複製／群組、undo／redo |
+| `src/dom.js` | 畫布與常用 DOM 節點 |
 
 ### 介面
 
@@ -141,7 +155,7 @@ Celeste（蔚藍）本機正版 Maps → intermediate → `levelcraft/v1` 管線
 node check-import.cjs
 ```
 
-零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋；另驗 id／links 正規化、縮放下限（小世界 0.15、大世界低於裝滿畫面的 zoom）與版號同步。`examples/celeste-import/data/` 未抽取時該組自動略過。
+零依賴，驗匯入分類：管線中間檔要被認出並指路、`levelcraft/v1` 關卡不得被誤擋；另驗 id／links 正規化、舊檔路徑換算、縮放下限（小世界 0.15、大世界低於裝滿畫面的 zoom）、格式層不引用瀏覽器 API 與版號同步。函式直接 `import` 自 `src/format.js`／`src/geometry.js`，不再用 regex 從原始碼抽。`examples/celeste-import/data/` 未抽取時該組自動略過。
 
 ```bash
 node check-ui.cjs
@@ -156,7 +170,7 @@ node check-ui.cjs
 node check-ui-rollback-probe.cjs
 ```
 
-回滾探針：把 `index.html`／`editor.js` 複製到暫存目錄，每次只弄壞一處出貨行為（群組互斥、連動排除出生點、匯入框住世界、類型改名連帶、重名驗證先於 undo），確認 `check-ui.cjs` 在對應案例轉紅；工作區不會被改動。改了 `editor.js` 的那幾行時跑一次，軸抽不到目標會直接 FAIL。
+回滾探針：把 `index.html` 與 `src/` 複製到暫存目錄，每次只弄壞一處出貨行為（群組互斥、連動排除出生點、匯入框住世界、類型改名連帶與禁刪、縮放下限、路徑相對座標、重名驗證先於 undo 等，共 10 條），確認 `check-ui.cjs` 在對應案例轉紅；工作區不會被改動。改了那幾行程式時跑一次，軸抽不到目標會直接 FAIL。
 
 ## 版本
 

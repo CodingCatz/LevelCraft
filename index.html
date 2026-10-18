@@ -124,7 +124,7 @@
 </head>
 <body>
 <header>
-  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag"><!-- 由 editor.js 的 VERSION 填入，避免版號兩份漂移 --></span></span>
+  <span class="title"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14M4 10h16"/></svg>LevelCraft <span style="color:var(--muted);font-weight:400;font-size:11px" id="verTag"><!-- 由 src/format.js 的 VERSION 填入，避免版號兩份漂移 --></span></span>
   <input class="name" id="lvName" value="level-01" title="關卡名稱" />
   <span class="sp"></span>
   <button id="btnNew">新建</button>
@@ -249,6 +249,6 @@
   </div>
 </dialog>
 
-<script src="editor.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>
