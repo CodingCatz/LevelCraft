@@ -10,7 +10,7 @@ export function normalizeGameCategory(cat) {
   return v === 'solid' || v === 'hazard' || v === 'object' || v === 'decor' ? v : 'object';
 }
 
-export const VERSION = '0.19.1';
+export const VERSION = '0.20.0';
 
 const FORMAT = 'levelcraft/v1';
 

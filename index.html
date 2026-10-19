@@ -78,6 +78,11 @@
     background: transparent; text-align: left; }
   .toolbar-item:hover, .toolbar-item.on { background: var(--panel2); border-color: var(--accent); }
   .toolbar-item .nm { flex: 1; }
+  .toolbar-row { display: flex; align-items: stretch; gap: 4px; }
+  .toolbar-row .toolbar-item { flex: 1; width: auto; }
+  .toolbar-item-edit { flex: none; width: 30px; padding: 0; display: grid; place-items: center; background: transparent; border: 1px solid transparent; }
+  .toolbar-item-edit:hover { background: var(--panel2); border-color: var(--accent); }
+  .toolbar-item-edit .ui-icon { width: 16px; height: 16px; }
   .toolbar-item-icon { width: 16px; height: 16px; color: var(--muted); }
   .list-icon { width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 2px; }
   .kv button .ui-icon, .num-stepper .ui-icon { width: 14px; height: 14px; margin: auto; }
@@ -180,7 +185,7 @@
 <!-- 類型編輯對話框 -->
 <dialog id="typeDlg">
   <form method="dialog">
-    <div class="dh">編輯類型</div>
+    <div class="dh" id="tdTitle">編輯類型</div>
     <div class="db">
       <div class="row"><label>名稱</label><input type="text" id="tdName" placeholder="例：ground / spike / key"></div>
       <div class="row"><label>顏色</label><input type="color" id="tdColor" value="#4fd1c5" style="width:60px;padding:2px"></div>

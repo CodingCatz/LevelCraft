@@ -130,6 +130,21 @@ async function press(key, { ctrl = false } = {}) {
   await cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...base });
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
 }
+/** 用真實滑鼠點畫面上的元素；元素不在畫面上或被別的東西蓋住就丟錯（守「使用者點得到」）。 */
+async function clickOnScreen(selector) {
+  const p = await ev(`(() => { const b = document.querySelector(${JSON.stringify(selector)}); if (!b) return 'missing'; const r = b.getBoundingClientRect(); if (!r.width || !r.height) return 'hidden'; const x = r.left + r.width / 2, y = r.top + r.height / 2; return b.contains(document.elementFromPoint(x, y)) ? { x, y } : 'covered'; })()`);
+  if (typeof p === 'string') throw new Error(`點不到 ${selector}（${p}）`);
+  await mouse('mouseMoved', p); await mouse('mousePressed', p, 1); await mouse('mouseReleased', p);
+}
+/** 走真入口編輯既有類型：點底部工具列該類型所在的分類，再點清單裡的編輯鈕；回傳對話框帶入的值。 */
+async function openTypeEditor(name) {
+  const editSel = `[data-edit-type=${JSON.stringify(name)}]`;
+  const category = await ev(`document.querySelector(${JSON.stringify(editSel)})?.closest('.toolbar-menu')?.id.replace('menu-', '') || ''`);
+  if (!category) throw new Error(`類型清單裡沒有 ${name} 的編輯鈕`);
+  await clickOnScreen(`[data-category="${category}"]`);
+  await clickOnScreen(editSel);
+  return ev(`({ open: typeDlg.open, title: tdTitle.textContent, name: tdName.value, shape: tdShape.value, movable: tdMovable.checked, menuOpen: Boolean(document.querySelector('.toolbar-menu.open')) })`);
+}
 const clickButton = id => ev(`(() => { const b = document.getElementById(${JSON.stringify(id)}); if (!b) throw new Error('找不到按鈕 #${id}'); b.click(); return true; })()`);
 const toolboxIds = () => ev(`[...document.querySelectorAll('#toolboxActions button')].map(b => b.id)`);
 const selection = () => ev(`selectionIds().slice().sort()`);
@@ -218,18 +233,27 @@ const CASES = [
     assert.deepEqual([(await el('g1')).x, (await el('g2')).x], [5.5, 13.5], '解散不得改動位置');
   }],
 
-  ['類型：改名連帶元素（UI 目前沒有編輯既有類型的入口，直接呼叫 openTypeDlg 開對話框）', async () => {
+  ['類型：從類型清單的編輯鈕改名、勾可移動，改名連帶元素', async () => {
     await freshPage(LEVEL);
-    await ev(`openTypeDlg(typeDef('ground')); tdName.value = 'floor'; true`);
-    await clickButton('tdSave');
+    const shown = await openTypeEditor('ground');
+    assert.deepEqual(shown, { open: true, title: '編輯類型：ground', name: 'ground', shape: 'rect', movable: false, menuOpen: false }, '編輯入口要開帶入現值的類型對話框並收起選單');
+    await ev(`tdName.value = 'floor'; true`);
+    await clickOnScreen('#tdMovable');
+    await clickOnScreen('#tdSave');
+    assert.equal(await ev(`typeDlg.open`), false, '儲存後關閉對話框');
     assert.equal(await ev(`typeDef('ground')`), undefined, '舊名不得殘留');
+    assert.equal(await ev(`typeDef('floor')?.movable`), true, '勾可移動要存進類型');
     assert.deepEqual([(await el('g1')).type, (await el('g2')).type], ['floor', 'floor'], '使用中元素要跟著改名');
+    assert.ok(await ev(`Boolean(document.querySelector('[data-edit-type="floor"]')) && !document.querySelector('[data-edit-type="ground"]')`), '類型清單要換成新名');
   }],
 
   ['類型：使用中類型禁改形狀', async () => {
     await freshPage(LEVEL);
-    await ev(`openTypeDlg(typeDef('wall')); tdShape.value = 'point'; true`);
-    await clickButton('tdSave');
+    assert.equal((await openTypeEditor('wall')).shape, 'rect');
+    await clickOnScreen('#tdShapeTrigger');
+    await clickOnScreen('#tdShapeMenu [data-shape="point"]');
+    assert.equal(await ev(`tdShape.value`), 'point', '形狀選單要能選到點');
+    await clickOnScreen('#tdSave');
     assert.match(dialogs.at(-1) || '', /不能改形狀/, '要跳出不能改形狀的提示');
     assert.equal(await ev(`typeDef('wall').shape`), 'rect');
     await ev(`typeDlg.close(); true`);
@@ -248,7 +272,7 @@ const CASES = [
 
   ['類型：使用中類型不能刪除、不留 undo，並說明怎麼處理', async () => {
     await freshPage(LEVEL);
-    await ev(`openTypeDlg(typeDef('wall')); true`);
+    await openTypeEditor('wall');
     assert.equal(await ev(`getComputedStyle(tdDelete).display`), 'none', '使用中類型不得渲染刪除鈕');
     assert.match(await ev(`tdInUse.hidden ? '' : tdInUse.textContent`), /有 1 個元素正在使用此類型[\s\S]*改成其他類型/, '要顯示使用數與處理方式');
     const before = await ev(`[undoStack.length, S.types.length]`);
@@ -261,7 +285,8 @@ const CASES = [
 
   ['類型：沒在用的類型可刪；刪掉目前放置的節點類型後節點工具仍正常', async () => {
     await freshPage(LEVEL);
-    await ev(`S.activeType = 'checkpoint'; setTool('marker'); renderAll(); openTypeDlg(typeDef('checkpoint')); true`);
+    await ev(`S.activeType = 'checkpoint'; setTool('marker'); renderAll(); true`);
+    await openTypeEditor('checkpoint');
     assert.equal(await ev(`tdInUse.hidden`), true, '沒在用的類型不顯示使用中說明');
     const undoBefore = await ev(`undoStack.length`);
     await clickButton('tdDelete');

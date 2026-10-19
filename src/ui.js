@@ -29,6 +29,7 @@ const icon = (name, className = '') => {
     ungroup: '<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M11 7h2M7 11v2" stroke-dasharray="2 2"/>',
     up: '<path d="m7 14 5-5 5 5"/>',
     down: '<path d="m7 10 5 5 5-5"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
   };
   return `<svg class="ui-icon ${className}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.rect}</svg>`;
 };
@@ -101,21 +102,27 @@ function orderedTypesFor(category) {
   });
 }
 
-/** 重建底部工具列的類型選單，單例已在場上的類型顯示為鎖定。 */
+/** 重建底部工具列的類型選單：每列是選用鈕＋編輯鈕，單例已在場上的類型選用鈕顯示為鎖定、編輯鈕照常可用。 */
 export function renderToolbar() {
   for (const category of ['rect', 'marker', 'node']) {
     const menu = $(`#menu-${category}`);
     menu.innerHTML = '';
     const types = orderedTypesFor(category);
     for (const t of types) {
-      const item = document.createElement('button');
+      const row = document.createElement('div'); row.className = 'toolbar-row';
+      const item = document.createElement('button'); item.type = 'button';
       const isLocked = !canUseType(t.name);
       item.className = 'toolbar-item' + (t.name === S.activeType ? ' on' : '') + (isLocked ? ' locked' : '');
       item.disabled = isLocked;
       item.title = isLocked ? singletonLockedMessage(t.name) : `選擇 ${t.name}`;
       item.innerHTML = `<span class="sw" style="background:${t.color}"></span><span class="nm">${escapeHtml(t.name)}</span>${icon(t.shape === 'rect' ? 'rect' : 'point', 'toolbar-item-icon')}`;
       item.onclick = () => { S.activeType = t.name; setTool(t.shape === 'rect' ? 'rect' : 'marker'); closeToolbarMenus(); renderAll(); };
-      menu.appendChild(item);
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'toolbar-item-edit';
+      edit.dataset.editType = t.name; edit.title = `編輯類型 ${t.name}`; edit.setAttribute('aria-label', `編輯類型 ${t.name}`);
+      edit.innerHTML = icon('edit');
+      edit.onclick = () => { closeToolbarMenus(); openTypeDlg(t); };
+      row.append(item, edit);
+      menu.appendChild(row);
     }
   }
   document.querySelectorAll('[data-category]').forEach(button => {
@@ -273,6 +280,7 @@ function renderTypeShapePicker() {
 /** 開啟類型對話框：傳 null 為新增類型，傳類型定義為編輯該類型。 */
 export function openTypeDlg(t) {
   editingType = t; // null = 新增
+  $('#tdTitle').textContent = t ? `編輯類型：${t.name}` : '新增類型';
   $('#tdName').value = t ? t.name : '';
   $('#tdColor').value = t ? t.color : '#4fd1c5';
   $('#tdShape').value = t ? t.shape : 'rect';
